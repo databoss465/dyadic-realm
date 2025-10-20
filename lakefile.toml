@@ -1,7 +1,7 @@
 name = "thesis_project"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["ThesisProject"]
+defaultTargets = ["DyadicRealm"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -16,4 +16,4 @@ scope = "leanprover-community"
 rev = "v4.24.0"
 
 [[lean_lib]]
-name = "ThesisProject"
+name = "DyadicRealm"
