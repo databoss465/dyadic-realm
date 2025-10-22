@@ -68,8 +68,23 @@ instance : DecidableRel equiv := by --∀ I J, Decidable (I.equiv J)
   intro I J
   exact instDecidableAnd
 
-instance : HasEquiv DyadicInterval where  --Syntactic sugar
-  Equiv := DyadicInterval.equiv
+instance : Setoid DyadicInterval where
+  r := DyadicInterval.equiv
+  iseqv := by
+    constructor
+    · intro I
+      unfold equiv
+      simp only [and_self]
+    · intro I J h
+      unfold equiv at *
+      constructor
+      · exact h.left.symm
+      · exact h.right.symm
+    · intro I J K h₁ h₂
+      unfold equiv at *
+      constructor
+      · exact Eq.trans h₁.left h₂.left
+      · exact Eq.trans h₁.right h₂.right
 
 instance : DecidableRel fun (I J : DyadicInterval) ↦ (I ≈ J) := by
   intro I J
@@ -79,11 +94,12 @@ instance : DecidableRel fun (I J : DyadicInterval) ↦ (I ≈ J) := by
 -- Needs more work on ≈
 -- To make it cleaner maybe we also need fun a m ↦ [a/2^m, a/2^m]
 theorem singleton_eq {I: DyadicInterval}(h : I.a = I.b) :
-  ∀ m : ℕ, I ≈ ⟨I.a, I.b, m, le_of_eq h⟩ := by
+  ∀ m : ℕ, I = ⟨I.a, I.b, m, le_of_eq h⟩ := by
   intro m
   sorry
 
-lemma add_comm : ∀ I J : DyadicInterval, I + J = J + I := by
+lemma add_comm : ∀ I J : DyadicInterval, I + J ≈ J + I := by
+  intro I J
   sorry
 
 end DyadicInterval
