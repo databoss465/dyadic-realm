@@ -1,75 +1,71 @@
 import Mathlib
 
-set_option diagnostics true
+-- set_option diagnostics true
 
-structure DyadicInterval where
+--A structure for *representatives of Dyadic Intervals*
+structure DyadIntvRep where
   a : ℤ
   b : ℤ
   n : ℕ
-  isValid : a ≤ b
+--Removed isValid for completeness of the type
+--It is better kept for semantic reasoning later on
 
-#check DyadicInterval.mk
+namespace DyadIntvRep
 
-namespace DyadicInterval
+def left (I : DyadIntvRep) : ℚ := mkRat I.a (2 ^ I.n)
+def right (I : DyadIntvRep) : ℚ := mkRat I.b (2 ^ I.n)
 
-def left (I : DyadicInterval) : ℚ := I.a / (2 ^ I.n)
-def right (I : DyadicInterval) : ℚ := I.b / (2 ^ I.n)
-
-def add (I J : DyadicInterval) : DyadicInterval :=
+def add (I J : DyadIntvRep) : DyadIntvRep :=
   let n' := max I.n J.n
   let a' := I.a * (2 ^ (n' - I.n)) + J.a * (2 ^ (n' - J.n))
   let b' := I.b * (2 ^ (n' - I.n)) + J.b * (2 ^ (n' - J.n))
-  have h : a' ≤ b' := by
-    unfold a' b'
-    apply Int.add_le_add
-    · rw[Int.mul_le_mul_iff_of_pos_right]
-      · exact I.isValid
-      · refine Int.pow_pos ?_
-        exact Int.sign_eq_one_iff_pos.mp rfl
-    · rw[Int.mul_le_mul_iff_of_pos_right]
-      · exact J.isValid
-      · refine Int.pow_pos ?_
-        exact Int.sign_eq_one_iff_pos.mp rfl
-  ⟨a', b', n', h⟩
+  -- have h : a' ≤ b' := by
+  --   unfold a' b'
+  --   apply Int.add_le_add
+  --   · rw[Int.mul_le_mul_iff_of_pos_right]
+  --     · exact I.isValid
+  --     · refine Int.pow_pos ?_
+  --       exact Int.sign_eq_one_iff_pos.mp rfl
+  --   · rw[Int.mul_le_mul_iff_of_pos_right]
+  --     · exact J.isValid
+  --     · refine Int.pow_pos ?_
+  --       exact Int.sign_eq_one_iff_pos.mp rfl
+  ⟨a', b', n'⟩
 
-instance : Add DyadicInterval where
-  add := DyadicInterval.add
+instance : Add DyadIntvRep where
+  add := DyadIntvRep.add
 
-def neg (I : DyadicInterval) : DyadicInterval :=
-  ⟨-I.b, -I.a, I.n, Int.neg_le_neg I.isValid⟩
+def neg (I : DyadIntvRep) : DyadIntvRep :=
+  ⟨-I.b, -I.a, I.n⟩
 
-instance : Neg DyadicInterval where
-  neg := DyadicInterval.neg
+instance : Neg DyadIntvRep where
+  neg := DyadIntvRep.neg
 
-def sub (I J : DyadicInterval) : DyadicInterval :=
+def sub (I J : DyadIntvRep) : DyadIntvRep :=
   I + (-J)
 
-instance : Sub DyadicInterval where
-  sub := DyadicInterval.sub
+instance : Sub DyadIntvRep where
+  sub := DyadIntvRep.sub
 
-def mul (I J : DyadicInterval) : DyadicInterval :=
+def mul (I J : DyadIntvRep) : DyadIntvRep :=
   let a' := min (min (I.a*J.a) (I.a*J.b)) (min (I.b*J.a) (I.b*J.b))
   let b' := max (max (I.a*J.a) (I.a*J.b)) (max (I.b*J.a) (I.b*J.b))
-  have h : a' ≤ b' := by
-    unfold a' b'
-    refine Left.min_le_max_of_add_le_add ?_
-    apply add_le_add
-    · exact min_le_max
-    · exact min_le_max
-  ⟨a', b', (I.n+J.n), h⟩
+  -- have h : a' ≤ b' := by
+  --   unfold a' b'
+  --   refine Left.min_le_max_of_add_le_add ?_
+  --   apply add_le_add
+  --   · exact min_le_max
+  --   · exact min_le_max
+  ⟨a', b', (I.n+J.n)⟩
 
-instance : Mul DyadicInterval where
-  mul := DyadicInterval.mul
+instance : Mul DyadIntvRep where
+  mul := DyadIntvRep.mul
 
-def equiv (I J : DyadicInterval) : Prop :=
+def equiv (I J : DyadIntvRep) : Prop :=
   (I.left = J.left) ∧ (I.right = J.right)
 
-instance : DecidableRel equiv := by --∀ I J, Decidable (I.equiv J)
-  intro I J
-  exact instDecidableAnd
-
-instance : Setoid DyadicInterval where
-  r := DyadicInterval.equiv
+instance : Setoid DyadIntvRep where
+  r := DyadIntvRep.equiv
   iseqv := by
     constructor
     · intro I
@@ -86,29 +82,76 @@ instance : Setoid DyadicInterval where
       · exact Eq.trans h₁.left h₂.left
       · exact Eq.trans h₁.right h₂.right
 
-instance : DecidableRel fun (I J : DyadicInterval) ↦ (I ≈ J) := by
+--Not really needed for proofs; only for computation
+instance : DecidableRel equiv := by --∀ I J, Decidable (I.equiv J)
+  intro I J
+  exact instDecidableAnd
+
+instance : DecidableRel fun (I J : DyadIntvRep) ↦ (I ≈ J) := by
   intro I J
   simp [HasEquiv.Equiv]
   exact instDecidableAnd
 
--- Needs more work on ≈
--- To make it cleaner maybe we also need fun a m ↦ [a/2^m, a/2^m]
-theorem singleton_eq {I: DyadicInterval}(h : I.a = I.b) :
-  ∀ m : ℕ, I = ⟨I.a, I.b, m, le_of_eq h⟩ := by
-  intro m
+@[simp]
+lemma equiv_iff (I J : DyadIntvRep) : I ≈ J ↔ (I.left = J.left) ∧ (I.right = J.right) := by rfl
+
+@[simp]
+lemma add_right (I J : DyadIntvRep) : (I + J).right = I.right + J.right := by
   sorry
 
-lemma add_comm : ∀ I J : DyadicInterval, I + J ≈ J + I := by
-  intro I J
+@[simp]
+lemma add_left (I J : DyadIntvRep) : (I + J).left = I.left + J.left := by
   sorry
 
-end DyadicInterval
+-- theorem add_comm : ∀ I J : DyadIntvRep, I + J ≈ J + I := by
+--   intro I J
+--   rw [equiv_iff]
+--   constructor
+--   · rw [add_left, add_left, Rat.add_comm]
+--   · rw [add_right, add_right, Rat.add_comm]
 
-def I : DyadicInterval := ⟨(-3), 1, 4, by decide⟩
-def I' : DyadicInterval := ⟨(-6), 2, 5, by decide⟩
-def J : DyadicInterval := ⟨(-7), (-2), 2, by decide⟩
+lemma left_well_defined : ∀ (I J : DyadIntvRep), I ≈ J → I.left = J.left := by
+  intro I J h
+  simp only [equiv_iff] at h
+  exact h.left
 
+lemma right_well_defined :  ∀ (I J : DyadIntvRep), I ≈ J → I.right = J.right := by
+  intro I J h
+  simp only [equiv_iff] at h
+  exact h.right
+
+end DyadIntvRep
+
+def I : DyadIntvRep := ⟨(-3), 1, 4⟩
+def I' : DyadIntvRep := ⟨(-6), 2, 5⟩
+def J : DyadIntvRep := ⟨(-7), (-2), 2⟩
 #eval I.left
 #eval I.right
 #eval I ≈ I'
 #eval I.equiv J
+
+#check Quotient
+#check DyadIntvRep.instSetoid
+#check Quotient.mk' I
+#check DyadIntvRep.instSetoid
+
+def DyadicInterval := Quotient DyadIntvRep.instSetoid
+
+#check DyadicInterval
+
+#check Quotient.lift DyadIntvRep.left DyadIntvRep.left_well_defined
+
+namespace DyadicInterval
+--Now lift functions
+def left (I : DyadicInterval) : ℚ :=
+  Quotient.lift DyadIntvRep.left DyadIntvRep.left_well_defined I
+def right (I : DyadicInterval) : ℚ :=
+  Quotient.lift DyadIntvRep.right DyadIntvRep.right_well_defined I
+
+end DyadicInterval
+
+def I₁ : DyadicInterval := Quotient.mk' I
+def I₁' : DyadicInterval := Quotient.mk' I'
+#eval I₁.left
+#eval I₁.right
+-- #eval I₁ = I₁' failed to synthesize Decidable (I₁ = I₁')
