@@ -1,6 +1,6 @@
 import Mathlib
 
-open List
+set_option diagnostics true
 
 structure DyadicInterval where
   a : ℤ
@@ -61,26 +61,38 @@ def mul (I J : DyadicInterval) : DyadicInterval :=
 instance : Mul DyadicInterval where
   mul := DyadicInterval.mul
 
-def eq (I J : DyadicInterval) := (I.left = J.left) ∧ (I.right = J.right)
+def equiv (I J : DyadicInterval) : Prop :=
+  (I.left = J.left) ∧ (I.right = J.right)
 
-instance : DecidableEq DyadicInterval := by sorry
+instance : DecidableRel equiv := by --∀ I J, Decidable (I.equiv J)
+  intro I J
+  exact instDecidableAnd
 
+instance : HasEquiv DyadicInterval where  --Syntactic sugar
+  Equiv := DyadicInterval.equiv
 
+instance : DecidableRel fun (I J : DyadicInterval) ↦ (I ≈ J) := by
+  intro I J
+  simp [HasEquiv.Equiv]
+  exact instDecidableAnd
+
+-- Needs more work on ≈
+-- To make it cleaner maybe we also need fun a m ↦ [a/2^m, a/2^m]
 theorem singleton_eq {I: DyadicInterval}(h : I.a = I.b) :
-  ∀ m : ℕ, I = ⟨I.a, I.b, m, le_of_eq h⟩ := by
+  ∀ m : ℕ, I ≈ ⟨I.a, I.b, m, le_of_eq h⟩ := by
   intro m
   sorry
 
 lemma add_comm : ∀ I J : DyadicInterval, I + J = J + I := by
   sorry
 
-
-
 end DyadicInterval
 
 def I : DyadicInterval := ⟨(-3), 1, 4, by decide⟩
-def I' : DyadicInterval := ⟨(-6), 2, 8, by decide⟩
+def I' : DyadicInterval := ⟨(-6), 2, 5, by decide⟩
 def J : DyadicInterval := ⟨(-7), (-2), 2, by decide⟩
 
 #eval I.left
 #eval I.right
+#eval I ≈ I'
+#eval I.equiv J
