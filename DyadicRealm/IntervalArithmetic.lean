@@ -7,13 +7,17 @@ structure DyadIntvRep where
   a : ℤ
   b : ℤ
   n : ℕ
+deriving DecidableEq
 --Removed isValid for completeness of the type
 --It is better kept for semantic reasoning later on
 
+#check  Dyadic.toRat
+#check Rat.toDyadic
+
 namespace DyadIntvRep
 
-def left (I : DyadIntvRep) : ℚ := mkRat I.a (2 ^ I.n)
-def right (I : DyadIntvRep) : ℚ := mkRat I.b (2 ^ I.n)
+def left (I : DyadIntvRep) : Dyadic := Dyadic.ofIntWithPrec I.a I.n
+def right (I : DyadIntvRep) : Dyadic := Dyadic.ofIntWithPrec I.b I.n
 
 def add (I J : DyadIntvRep) : DyadIntvRep :=
   let n' := max I.n J.n
@@ -69,8 +73,7 @@ instance : Setoid DyadIntvRep where
   iseqv := by
     constructor
     · intro I
-      unfold equiv
-      simp only [and_self]
+      simp only [equiv, and_self]
     · intro I J h
       unfold equiv at *
       constructor
@@ -120,6 +123,11 @@ lemma right_well_defined :  ∀ (I J : DyadIntvRep), I ≈ J → I.right = J.rig
   simp only [equiv_iff] at h
   exact h.right
 
+--NOT TRUE
+-- We are only guaranteed a₁.add b₁ ≈ a₂.add b₂
+-- lemma add_well_defined : ∀ (a₁ b₁ a₂ b₂ : DyadIntvRep),
+--   a₁ ≈ a₂ → b₁ ≈ b₂ → a₁.add b₁ = a₂.add b₂ := by
+--   sorry
 end DyadIntvRep
 
 def I : DyadIntvRep := ⟨(-3), 1, 4⟩
@@ -130,28 +138,44 @@ def J : DyadIntvRep := ⟨(-7), (-2), 2⟩
 #eval I ≈ I'
 #eval I.equiv J
 
-#check Quotient
-#check DyadIntvRep.instSetoid
-#check Quotient.mk' I
-#check DyadIntvRep.instSetoid
+#check add_le_add
 
-def DyadicInterval := Quotient DyadIntvRep.instSetoid
+-- ------------------------------------------------------------------
+structure DyadicInterval where
+  left : Dyadic
+  right : Dyadic
+  isValid : left ≤ right
 
-#check DyadicInterval
+namespace Dyadic
 
-#check Quotient.lift DyadIntvRep.left DyadIntvRep.left_well_defined
+instance : Preorder Dyadic where
+  le x y := toRat x ≤ toRat y
+  lt x y := toRat x < toRat y
+  le_refl x := by rfl
+  le_trans x y z h₁ h₂ := le_trans h₁ h₂
+  lt_iff_le_not_ge x y := Rat.lt_iff_le_not_ge x.toRat y.toRat
 
+theorem add_le_add' {a b c d : Dyadic} (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
+  simp only [le_iff_toRat, toRat_add] at *
+  exact add_le_add h₁ h₂
+
+end Dyadic
 namespace DyadicInterval
---Now lift functions
-def left (I : DyadicInterval) : ℚ :=
-  Quotient.lift DyadIntvRep.left DyadIntvRep.left_well_defined I
-def right (I : DyadicInterval) : ℚ :=
-  Quotient.lift DyadIntvRep.right DyadIntvRep.right_well_defined I
+
+def add (I J : DyadicInterval) : DyadicInterval :=
+  let l := I.left + J.left
+  let r := I.right + J.right
+  have h : l ≤ r := Dyadic.add_le_add' I.isValid J.isValid
+  ⟨l, r, h⟩
+
+instance : Add DyadicInterval where
+  add := DyadicInterval.add
+
+def neg (I : DyadicInterval) : DyadicInterval :=
+  have h : -I.right ≤ -I.left := by sorry
+  ⟨-I.right, -I.left, h⟩
 
 end DyadicInterval
 
-def I₁ : DyadicInterval := Quotient.mk' I
-def I₁' : DyadicInterval := Quotient.mk' I'
-#eval I₁.left
-#eval I₁.right
--- #eval I₁ = I₁' failed to synthesize Decidable (I₁ = I₁')
+#check Dyadic.ofOdd (-3) 5 (by ring)
+#eval Dyadic.ofIntWithPrec (-3) 4
