@@ -1,5 +1,5 @@
 import Mathlib
-
+open Dyadic
 -- set_option diagnostics true
 
 --A structure for *representatives of Dyadic Intervals*
@@ -140,41 +140,91 @@ def J : DyadIntvRep := ⟨(-7), (-2), 2⟩
 
 #check add_le_add
 
--- ------------------------------------------------------------------
-structure DyadicInterval where
-  left : Dyadic
-  right : Dyadic
-  isValid : left ≤ right
-
+---------------------------------------------------------------------
 namespace Dyadic
 
-instance : Preorder Dyadic where
-  le x y := toRat x ≤ toRat y
-  lt x y := toRat x < toRat y
-  le_refl x := by rfl
-  le_trans x y z h₁ h₂ := le_trans h₁ h₂
-  lt_iff_le_not_ge x y := Rat.lt_iff_le_not_ge x.toRat y.toRat
+def maxDy (a b : Dyadic) : Dyadic := if a ≤ b then b else a
+
+def minDy (a b : Dyadic) : Dyadic := if a ≤ b then a else b
+
+instance : Max Dyadic := ⟨Dyadic.maxDy⟩
+
+instance : Min Dyadic := ⟨Dyadic.minDy⟩
+
+-- instance : LinearOrder Dyadic where
+-- le_refl := sorry
+-- le_trans := sorry
+-- le_antisymm := sorry
+-- le_total := sorry
+-- toDecidableLE := sorry
 
 theorem add_le_add' {a b c d : Dyadic} (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
   simp only [le_iff_toRat, toRat_add] at *
   exact add_le_add h₁ h₂
 
 end Dyadic
+
+structure DyadicInterval where
+  left : Dyadic
+  right : Dyadic
+  isValid : left ≤ right
+
+---------------------------------------------------------------------
 namespace DyadicInterval
 
 def add (I J : DyadicInterval) : DyadicInterval :=
   let l := I.left + J.left
   let r := I.right + J.right
-  have h : l ≤ r := Dyadic.add_le_add' I.isValid J.isValid
+  have h : l ≤ r := add_le_add' I.isValid J.isValid
   ⟨l, r, h⟩
 
-instance : Add DyadicInterval where
-  add := DyadicInterval.add
+instance : Add DyadicInterval := ⟨DyadicInterval.add⟩
 
 def neg (I : DyadicInterval) : DyadicInterval :=
-  have h : -I.right ≤ -I.left := by sorry
+  have h : -I.right ≤ -I.left := by
+     simp only [le_iff_toRat, toRat_neg, neg_le_neg_iff]
+     rw [← le_iff_toRat]
+     exact I.isValid
   ⟨-I.right, -I.left, h⟩
 
+instance : Neg DyadicInterval := ⟨DyadicInterval.neg⟩
+
+def sub (I J : DyadicInterval) : DyadicInterval := I + (-J)
+
+instance : Sub DyadicInterval where
+  sub := DyadicInterval.sub
+
+-- Need LinearOrder for max and min
+def mul (I J : DyadicInterval) : DyadicInterval :=
+  let a := I.left * J.left
+  let b := I.left * J.right
+  let c := I.right * J.left
+  let d := I.right * J.right
+  let r := max (max a b) (max c d)
+  let l := min (min a b) (min c d)
+  have h : l ≤ r := by sorry
+  ⟨l, r, h⟩
+
+instance : Mul DyadicInterval := ⟨DyadicInterval.mul⟩
+
+@[simp]
+theorem left_add (I J : DyadicInterval) : (I + J).left = I.left + J.left := by rfl
+
+@[simp]
+theorem right_add (I J : DyadicInterval) : (I + J).right = I.right + J.right := by rfl
+
+-- I haven't even defined equality...?
+@[simp]
+theorem eq_iff_left_right (I J : DyadicInterval) : I = J ↔ I.left = J.left ∧ I.right = J.right := by
+  sorry
+
+theorem add_comm (I J : DyadicInterval) : I + J = J + I := by
+  simp only [eq_iff_left_right, left_add, right_add, Dyadic.add_comm, and_self]
+
+theorem add_assoc (I J K : DyadicInterval) : (I + J) + K = I + (J + K) := by
+  simp only [eq_iff_left_right, left_add, right_add, Dyadic.add_assoc, and_self]
+
+-- neg_add_cancel is not true!
 end DyadicInterval
 
 #check Dyadic.ofOdd (-3) 5 (by ring)
