@@ -1,18 +1,12 @@
 import Mathlib
-open Dyadic
+open Dyadic Finset
 -- set_option diagnostics true
 
---A structure for *representatives of Dyadic Intervals*
 structure DyadIntvRep where
   a : ℤ
   b : ℤ
   n : ℕ
 deriving DecidableEq
---Removed isValid for completeness of the type
---It is better kept for semantic reasoning later on
-
-#check  Dyadic.toRat
-#check Rat.toDyadic
 
 namespace DyadIntvRep
 
@@ -130,17 +124,12 @@ lemma right_well_defined :  ∀ (I J : DyadIntvRep), I ≈ J → I.right = J.rig
 --   sorry
 end DyadIntvRep
 
-def I : DyadIntvRep := ⟨(-3), 1, 4⟩
-def I' : DyadIntvRep := ⟨(-6), 2, 5⟩
-def J : DyadIntvRep := ⟨(-7), (-2), 2⟩
-#eval I.left
-#eval I.right
-#eval I ≈ I'
-#eval I.equiv J
-
-#check add_le_add
-
 ---------------------------------------------------------------------
+
+#check  Dyadic.toRat
+#check Rat.toDyadic
+#check Finset.max'
+
 namespace Dyadic
 
 def maxDy (a b : Dyadic) : Dyadic := if a ≤ b then b else a
@@ -168,6 +157,7 @@ structure DyadicInterval where
   left : Dyadic
   right : Dyadic
   isValid : left ≤ right
+  deriving DecidableEq
 
 ---------------------------------------------------------------------
 namespace DyadicInterval
@@ -195,6 +185,7 @@ instance : Sub DyadicInterval where
   sub := DyadicInterval.sub
 
 -- Need LinearOrder for max and min
+--Once we have LinearOrder use Finset.max'
 def mul (I J : DyadicInterval) : DyadicInterval :=
   let a := I.left * J.left
   let b := I.left * J.right
@@ -216,7 +207,17 @@ theorem right_add (I J : DyadicInterval) : (I + J).right = I.right + J.right := 
 -- I haven't even defined equality...?
 @[simp]
 theorem eq_iff_left_right (I J : DyadicInterval) : I = J ↔ I.left = J.left ∧ I.right = J.right := by
-  sorry
+  constructor
+  · intro h
+    cases I
+    cases J
+    simp only [mk.injEq] at *
+    exact h
+  · intro h
+    cases I
+    cases J
+    simp only [mk.injEq] at *
+    exact h
 
 theorem add_comm (I J : DyadicInterval) : I + J = J + I := by
   simp only [eq_iff_left_right, left_add, right_add, Dyadic.add_comm, and_self]
@@ -227,5 +228,10 @@ theorem add_assoc (I J K : DyadicInterval) : (I + J) + K = I + (J + K) := by
 -- neg_add_cancel is not true!
 end DyadicInterval
 
-#check Dyadic.ofOdd (-3) 5 (by ring)
-#eval Dyadic.ofIntWithPrec (-3) 4
+def a := Dyadic.ofOdd (-3) 5 (by ring)
+def b := Dyadic.ofOdd (7) 3 (by ring)
+def I : DyadicInterval := ⟨a, b, by decide⟩
+def J : DyadicInterval := ⟨a, b, by decide⟩
+def J' : DyadicInterval := ⟨(a-1), b, by decide⟩
+#eval I = J
+#eval I = J'
