@@ -86,7 +86,7 @@ instance : DecidableRel equiv := by --∀ I J, Decidable (I.equiv J)
 
 instance : DecidableRel fun (I J : DyadIntvRep) ↦ (I ≈ J) := by
   intro I J
-  simp [HasEquiv.Equiv]
+  simp only[HasEquiv.Equiv]
   exact instDecidableAnd
 
 @[simp]
@@ -132,20 +132,24 @@ end DyadIntvRep
 
 namespace Dyadic
 
-def maxDy (a b : Dyadic) : Dyadic := if a ≤ b then b else a
+-- def maxDy (a b : Dyadic) : Dyadic := if a ≤ b then b else a
 
-def minDy (a b : Dyadic) : Dyadic := if a ≤ b then a else b
+-- def minDy (a b : Dyadic) : Dyadic := if a ≤ b then a else b
 
-instance : Max Dyadic := ⟨Dyadic.maxDy⟩
+-- instance : Max Dyadic := ⟨Dyadic.maxDy⟩
 
-instance : Min Dyadic := ⟨Dyadic.minDy⟩
+-- instance : Min Dyadic := ⟨Dyadic.minDy⟩
 
--- instance : LinearOrder Dyadic where
--- le_refl := sorry
--- le_trans := sorry
--- le_antisymm := sorry
--- le_total := sorry
--- toDecidableLE := sorry
+instance : LinearOrder Dyadic where
+  le_refl := Dyadic.le_refl
+  le_trans _ _ _ := Dyadic.le_trans
+  le_antisymm _ _ := Dyadic.le_antisymm
+  le_total := Dyadic.le_total
+  toDecidableLE := by exact fun _ _ => inferInstanceAs (Decidable (_ = true))
+  lt_iff_le_not_ge := by
+    simp only [Dyadic.not_lt, iff_and_self]
+    intro a b h
+    apply Std.le_of_lt h
 
 theorem add_le_add' {a b c d : Dyadic} (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
   simp only [le_iff_toRat, toRat_add] at *
@@ -187,13 +191,16 @@ instance : Sub DyadicInterval where
 -- Need LinearOrder for max and min
 --Once we have LinearOrder use Finset.max'
 def mul (I J : DyadicInterval) : DyadicInterval :=
-  let a := I.left * J.left
-  let b := I.left * J.right
-  let c := I.right * J.left
-  let d := I.right * J.right
-  let r := max (max a b) (max c d)
-  let l := min (min a b) (min c d)
-  have h : l ≤ r := by sorry
+  let s : Finset Dyadic :=
+    {(I.left * J.left),
+    (I.left * J.right),
+    (I.right * J.left),
+    (I.right * J.right)}
+  have hs : s.Nonempty :=
+    insert_nonempty (I.left * J.left) {I.left * J.right, I.right * J.left, I.right * J.right}
+  let r := max' s hs
+  let l := min' s hs
+  have h : l ≤ r := min'_le_max' s hs
   ⟨l, r, h⟩
 
 instance : Mul DyadicInterval := ⟨DyadicInterval.mul⟩
@@ -204,7 +211,12 @@ theorem left_add (I J : DyadicInterval) : (I + J).left = I.left + J.left := by r
 @[simp]
 theorem right_add (I J : DyadicInterval) : (I + J).right = I.right + J.right := by rfl
 
--- I haven't even defined equality...?
+@[simp]
+theorem left_mul (I J : DyadicInterval) : (I * J).left ≤ I.left * J.left := by sorry
+
+@[simp]
+theorem right_mul (I J : DyadicInterval) : (I * J).right ≥ I.right * J.right := by sorry
+
 @[simp]
 theorem eq_iff_left_right (I J : DyadicInterval) : I = J ↔ I.left = J.left ∧ I.right = J.right := by
   constructor
@@ -225,6 +237,20 @@ theorem add_comm (I J : DyadicInterval) : I + J = J + I := by
 theorem add_assoc (I J K : DyadicInterval) : (I + J) + K = I + (J + K) := by
   simp only [eq_iff_left_right, left_add, right_add, Dyadic.add_assoc, and_self]
 
+theorem mul_comm (I J : DyadicInterval) : I * J = J * I := by
+  sorry
+
+theorem mul_assoc (I J K : DyadicInterval) : (I * J) * K = I * (J * K) := by
+  sorry
+
+theorem add_mul (I J K : DyadicInterval) : (I + J) * K = I * K + I * J := by
+  sorry
+
+theorem mul_add (I J K : DyadicInterval) : I * (J + K) = I * J + I * K := by
+  sorry
+
+theorem neg_mul (I J : DyadicInterval) : -I * J = - (I * J) := by
+  sorry
 -- neg_add_cancel is not true!
 end DyadicInterval
 
@@ -235,3 +261,7 @@ def J : DyadicInterval := ⟨a, b, by decide⟩
 def J' : DyadicInterval := ⟨(a-1), b, by decide⟩
 #eval I = J
 #eval I = J'
+#eval (I + J).left
+#eval (I + J).right
+#eval (I * J).left
+#eval (I * J).right
