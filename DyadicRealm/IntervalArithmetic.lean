@@ -1,6 +1,7 @@
 import Mathlib
 open Dyadic Finset
 -- set_option diagnostics true
+set_option linter.style.commandStart false
 
 structure DyadIntvRep where
   a : ℤ
@@ -126,34 +127,63 @@ end DyadIntvRep
 
 ---------------------------------------------------------------------
 
-#check  Dyadic.toRat
-#check Rat.toDyadic
-#check Finset.max'
+instance : LinearOrder Dyadic where
+le_refl := Dyadic.le_refl
+le_trans _ _ _ := Dyadic.le_trans
+le_antisymm _ _ := Dyadic.le_antisymm
+le_total := Dyadic.le_total
+toDecidableLE := by exact fun _ _ => inferInstanceAs (Decidable (_ = true))
+lt_iff_le_not_ge := by
+  simp only [Dyadic.not_lt, iff_and_self]
+  intro a b h
+  apply Std.le_of_lt h
+
+-- #synth AddGroup Dyadic
+-- #synth LE Dyadic
+-- #synth AddLeftMono Dyadic
+-- #synth AddRightMono Dyadic
+-- #check neg_le
 
 namespace Dyadic
 
--- def maxDy (a b : Dyadic) : Dyadic := if a ≤ b then b else a
-
--- def minDy (a b : Dyadic) : Dyadic := if a ≤ b then a else b
-
--- instance : Max Dyadic := ⟨Dyadic.maxDy⟩
-
--- instance : Min Dyadic := ⟨Dyadic.minDy⟩
-
-instance : LinearOrder Dyadic where
-  le_refl := Dyadic.le_refl
-  le_trans _ _ _ := Dyadic.le_trans
-  le_antisymm _ _ := Dyadic.le_antisymm
-  le_total := Dyadic.le_total
-  toDecidableLE := by exact fun _ _ => inferInstanceAs (Decidable (_ = true))
-  lt_iff_le_not_ge := by
-    simp only [Dyadic.not_lt, iff_and_self]
-    intro a b h
-    apply Std.le_of_lt h
-
+@[simp]
 theorem add_le_add' {a b c d : Dyadic} (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
   simp only [le_iff_toRat, toRat_add] at *
   exact add_le_add h₁ h₂
+
+@[simp]
+lemma neg_le_iff {a b : Dyadic} : -a ≤ b ↔ -b ≤ a := by
+  simp only [le_iff_toRat, toRat_neg]
+  exact neg_le
+
+@[simp]
+lemma le_neg_iff {a b : Dyadic} : a ≤ -b ↔ b ≤ -a := by
+  simp only [le_iff_toRat, toRat_neg]
+  exact le_neg
+
+lemma neg_min'_neg (S S' : Finset Dyadic) (hS : S.Nonempty) (hS' : S'.Nonempty)
+(hS₁ : ∀ s ∈ S', -s ∈ S) (hS₂ : ∀ s ∈ S, -s ∈ S') : S.min' hS = -(S'.max' hS') := by
+  rw [min'_eq_iff]
+  constructor
+  · apply hS₁
+    apply max'_mem
+  · intro s hs
+    specialize hS₂ s hs
+    rw [neg_le_iff]
+    apply le_max'
+    exact hS₂
+
+lemma neg_max'_neg (S S' : Finset Dyadic) (hS : S.Nonempty) (hS' : S'.Nonempty)
+(hS₁ : ∀ s ∈ S', -s ∈ S) (hS₂ : ∀ s ∈ S, -s ∈ S') : S.max' hS = -(S'.min' hS') := by
+  rw [max'_eq_iff]
+  constructor
+  · apply hS₁
+    apply min'_mem
+  · intro s hs
+    specialize hS₂ s hs
+    rw [le_neg_iff]
+    apply min'_le
+    exact hS₂
 
 end Dyadic
 
@@ -277,8 +307,22 @@ theorem mul_comm : I * J = J * I := by
 theorem neg_mul : -I * J = - (I * J) := by
   simp only [eq_iff_left_right]
   constructor
-  · sorry
-  · sorry
+  · simp only [mul_left_endpt, productEndpts, neg_left, mul_right_endpt, neg_right]
+    apply Dyadic.neg_min'_neg
+    · intro s hs
+      simp only [mem_insert, mem_singleton] at *
+      grind only [cases Or]
+    · intro s hs
+      simp only [mem_insert, mem_singleton] at *
+      grind only [cases Or]
+  · simp only [mul_left_endpt, productEndpts, neg_left, mul_right_endpt, neg_right]
+    apply Dyadic.neg_max'_neg
+    · intro s hs
+      simp only [mem_insert, mem_singleton] at *
+      grind only [cases Or]
+    · intro s hs
+      simp only [mem_insert, mem_singleton] at *
+      grind only [cases Or]
 
 -- neg_add_cancel is not true!
 end
