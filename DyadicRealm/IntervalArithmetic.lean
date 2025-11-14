@@ -2,6 +2,7 @@ import Mathlib
 open Dyadic Finset
 -- set_option diagnostics true
 set_option linter.style.commandStart false
+set_option linter.unusedVariables false
 
 structure DyadIntvRep where
   a : ℤ
@@ -237,6 +238,36 @@ def mul : DyadicInterval :=
   ⟨min' s hs, max' s hs, min'_le_max' s hs⟩
 
 instance : Mul DyadicInterval := ⟨DyadicInterval.mul⟩
+
+def powOdd (n : ℕ) (hn : n % 2 = 1) : DyadicInterval :=
+  have h : I.left ^ n ≤ I.right ^ n := by
+    simp only [le_iff_toRat, toRat_pow]
+    rw [Odd.pow_le_pow]
+    · rw [← le_iff_toRat]
+      exact I.isValid
+    · rw [Nat.odd_iff]
+      exact hn
+  ⟨(I.left ^ n), (I.right ^ n), h⟩
+
+def powEven (n : ℕ) (hn : n % 2 = 0): DyadicInterval :=
+  let s : Finset Dyadic := {0, (I.left^n), (I.right^n)}
+  have hs : s.Nonempty := insert_nonempty 0 {(I.left^n), (I.right^n)}
+  ⟨min' s hs, max' s hs, min'_le_max' s hs⟩
+
+def pow (n : ℕ) : DyadicInterval :=
+  match n with
+  | 0 => ⟨1, 1, rfl⟩
+  | n + 1 =>
+    match h: (n + 1) % 2 with
+      | 0 =>
+          -- have h₀ : (n + 1) % 2 = 0 := by assumption
+          powEven I (n + 1) h
+      | 1 =>
+          -- have h₁ : (n + 1) % 2 = 1 := by assumption
+          powOdd I (n+1) h
+      | n + 2 => by grind only
+
+instance : Pow DyadicInterval Nat := ⟨DyadicInterval.pow⟩
 
 @[simp]
 theorem left_add_eq : (I + J).left = I.left + J.left := by rfl
