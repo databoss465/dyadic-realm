@@ -3,6 +3,7 @@ open Dyadic Finset
 -- set_option diagnostics true
 set_option linter.style.commandStart false
 set_option linter.unusedVariables false
+set_option linter.style.longLine false
 
 structure DyadIntvRep where
   a : ℤ
@@ -197,7 +198,21 @@ structure DyadicInterval where
 ---------------------------------------------------------------------
 namespace DyadicInterval
 section
-variable (I J K : DyadicInterval)
+variable (I J K : DyadicInterval)(a : Dyadic)
+
+
+def ofDyadic (a : Dyadic) : DyadicInterval := ⟨a, a, le_rfl⟩
+
+instance : Coe Dyadic DyadicInterval := ⟨DyadicInterval.ofDyadic⟩
+
+instance (n : Nat) : OfNat DyadicInterval n :=
+  ⟨((n : Dyadic) : DyadicInterval)⟩
+
+instance : NatCast DyadicInterval :=
+  ⟨fun n => ((n : Dyadic) : DyadicInterval)⟩
+
+instance : IntCast DyadicInterval :=
+  ⟨fun z => ((z : Dyadic) : DyadicInterval)⟩
 
 def add : DyadicInterval :=
   let l := I.left + J.left
@@ -256,24 +271,26 @@ def powEven (n : ℕ) (hn : n % 2 = 0): DyadicInterval :=
 
 def pow (n : ℕ) : DyadicInterval :=
   match n with
-  | 0 => ⟨1, 1, rfl⟩
+  | 0 => ⟨1, 1, le_rfl⟩
   | n + 1 =>
     match h: (n + 1) % 2 with
-      | 0 =>
-          -- have h₀ : (n + 1) % 2 = 0 := by assumption
-          powEven I (n + 1) h
-      | 1 =>
-          -- have h₁ : (n + 1) % 2 = 1 := by assumption
-          powOdd I (n+1) h
+      | 0 => powEven I (n + 1) h
+      | 1 => powOdd I (n+1) h
       | n + 2 => by grind only
 
 instance : Pow DyadicInterval Nat := ⟨DyadicInterval.pow⟩
 
 @[simp]
-theorem left_add_eq : (I + J).left = I.left + J.left := by rfl
+lemma left_coe_zero : (0 : DyadicInterval).left = 0 := by rfl
 
 @[simp]
-theorem right_add_eq : (I + J).right = I.right + J.right := by rfl
+lemma right_coe_zero : (0 : DyadicInterval).right = 0 := by rfl
+
+@[simp]
+lemma left_add_eq : (I + J).left = I.left + J.left := by rfl
+
+@[simp]
+lemma right_add_eq : (I + J).right = I.right + J.right := by rfl
 
 @[simp]
 lemma mul_left_endpt : (I * J).left =
@@ -308,33 +325,44 @@ lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
   simp only [productEndpts, Dyadic.mul_comm]
   grind only [= Set.mem_singleton_iff, = mem_singleton, = insert_eq_of_mem, = mem_insert, cases Or]
 
--- FALSE!
--- lemma product_endpts_assoc : productEndpts (I * J) K = productEndpts I (J * K) := by
---   sorry
+@[simp]
+lemma product_endpts_zero : productEndpts I 0 = {0} := by
+  simp only [productEndpts, left_coe_zero, right_coe_zero]
+  simp only [Dyadic.mul_zero, mem_singleton, insert_eq_of_mem]
 
+@[simp]
+lemma product_endpts_one : productEndpts I 1 = {I.left, I.right} := by
+  have h₁ : left 1 = 1 := by rfl
+  have h₂ : right 1 = 1 := by rfl
+  simp only [productEndpts, h₁, h₂, Dyadic.mul_one]
+  simp only [mem_singleton, insert_eq_of_mem, mem_insert, true_or]
+
+@[simp]
 theorem add_comm : I + J = J + I := by
   simp only [eq_iff_left_right, left_add_eq, right_add_eq, Dyadic.add_comm, and_self]
 
+
+@[simp]
 theorem add_assoc : (I + J) + K = I + (J + K) := by
   simp only [eq_iff_left_right, left_add_eq, right_add_eq, Dyadic.add_assoc, and_self]
 
+
+@[simp]
+theorem zero_add : I + 0 = I := by
+  rw [eq_iff_left_right, left_add_eq, right_add_eq]
+  constructor
+  · rw [left_coe_zero, Dyadic.add_zero]
+  · rw [right_coe_zero, Dyadic.add_zero]
+
+@[simp]
+theorem add_zero : 0 + I = I := by
+  rw [add_comm, zero_add]
+
+@[simp]
 theorem mul_comm : I * J = J * I := by
   simp only [eq_iff_left_right, mul_left_endpt, mul_right_endpt, product_endpts_comm, and_self]
 
--- NOT TRUE
--- theorem mul_assoc : (I * J) * K = I * (J * K) := by
---   rw [eq_iff_left_right]
---   constructor
---   · simp only [mul_left_endpt]
---     sorry
---   · sorry
-
--- theorem add_mul : (I + J) * K = I * K + I * J := by
---   sorry
-
--- theorem mul_add : I * (J + K) = I * J + I * K := by
---   sorry
-
+@[simp]
 theorem neg_mul : -I * J = - (I * J) := by
   simp only [eq_iff_left_right]
   constructor
@@ -356,6 +384,25 @@ theorem neg_mul : -I * J = - (I * J) := by
       grind only [cases Or]
 
 -- neg_add_cancel is not true!
+
+@[simp]
+theorem mul_zero : I * 0 = 0 := by
+  simp only [eq_iff_left_right, mul_left_endpt, product_endpts_zero, min'_singleton, left_coe_zero,
+    mul_right_endpt, max'_singleton, right_coe_zero, and_self]
+
+@[simp]
+theorem zero_mul : 0 * I = 0 := by rw [mul_comm, mul_zero]
+
+@[simp]
+theorem mul_one : I * 1 = I := by
+  simp only [eq_iff_left_right, mul_left_endpt, product_endpts_one, mul_right_endpt]
+  constructor
+  · simp only [min'_eq_iff, mem_insert, mem_singleton, true_or, forall_eq_or_imp, le_refl, forall_eq, true_and, I.isValid]
+  · simp only [max'_eq_iff, mem_insert, mem_singleton, or_true, forall_eq_or_imp, forall_eq, le_refl, and_true, I.isValid]
+
+@[simp]
+theorem one_mul : 1 * I = I := by rw [mul_comm, mul_one]
+
 end
 end DyadicInterval
 
@@ -370,3 +417,4 @@ def J' : DyadicInterval := ⟨(a-1), b, by decide⟩
 #eval (I + J).right.toRat
 #eval (I * J).left.toRat
 #eval (I * J).right.toRat
+#eval (I + 3).left.toRat
