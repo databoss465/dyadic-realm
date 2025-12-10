@@ -95,13 +95,13 @@ instance : DecidableRel fun (I J : DyadIntvRep) ↦ (I ≈ J) := by
 @[simp]
 lemma equiv_iff (I J : DyadIntvRep) : I ≈ J ↔ (I.left = J.left) ∧ (I.right = J.right) := by rfl
 
-@[simp]
-lemma add_right (I J : DyadIntvRep) : (I + J).right = I.right + J.right := by
-  sorry
+-- @[simp]
+-- lemma add_right (I J : DyadIntvRep) : (I + J).right = I.right + J.right := by
+--   sorry
 
-@[simp]
-lemma add_left (I J : DyadIntvRep) : (I + J).left = I.left + J.left := by
-  sorry
+-- @[simp]
+-- lemma add_left (I J : DyadIntvRep) : (I + J).left = I.left + J.left := by
+--   sorry
 
 -- theorem add_comm : ∀ I J : DyadIntvRep, I + J ≈ J + I := by
 --   intro I J
@@ -163,6 +163,9 @@ lemma le_neg_iff {a b : Dyadic} : a ≤ -b ↔ b ≤ -a := by
   simp only [le_iff_toRat, toRat_neg]
   exact le_neg
 
+@[simp]
+lemma sub_eq_add_neg (a b : Dyadic) : a - b = a + (-b) := by rfl
+
 lemma neg_min'_neg (S S' : Finset Dyadic) (hS : S.Nonempty) (hS' : S'.Nonempty)
 (hS₁ : ∀ s ∈ S', -s ∈ S) (hS₂ : ∀ s ∈ S, -s ∈ S') : S.min' hS = -(S'.max' hS') := by
   rw [min'_eq_iff]
@@ -213,6 +216,13 @@ instance : NatCast DyadicInterval :=
 
 instance : IntCast DyadicInterval :=
   ⟨fun z => ((z : Dyadic) : DyadicInterval)⟩
+
+def Mem (x : ℝ) : Prop := I.left.toRat ≤ x ∧ x ≤ I.right.toRat
+-- def Mem (x : Dyadic) : Prop := x ∈ Icc (I.left.toRat) (I.right.toRat)    Fix this?
+
+instance : Membership ℝ DyadicInterval where mem := DyadicInterval.Mem
+
+-- instance {x : ℝ} : Decidable (x ∈ I) := sorry
 
 def add : DyadicInterval :=
   let l := I.left + J.left
@@ -269,7 +279,7 @@ def powEven (n : ℕ) (hn : n % 2 = 0): DyadicInterval :=
   have hs : s.Nonempty := insert_nonempty 0 {(I.left^n), (I.right^n)}
   ⟨min' s hs, max' s hs, min'_le_max' s hs⟩
 
-def pow (n : ℕ) : DyadicInterval :=
+def powExact (n : ℕ) : DyadicInterval :=
   match n with
   | 0 => ⟨1, 1, le_rfl⟩
   | n + 1 =>
@@ -278,7 +288,11 @@ def pow (n : ℕ) : DyadicInterval :=
       | 1 => powOdd I (n+1) h
       | n + 2 => by grind only
 
-instance : Pow DyadicInterval Nat := ⟨DyadicInterval.pow⟩
+def pow (I : DyadicInterval) : ℕ → DyadicInterval
+| 0     => 1
+| (n+1) => (pow I n) * I
+
+instance : Pow DyadicInterval Nat := ⟨DyadicInterval.powExact⟩
 
 @[simp]
 lemma left_coe_zero : (0 : DyadicInterval).left = 0 := by rfl
@@ -306,6 +320,17 @@ lemma neg_left : (- I).left = -I.right := by rfl
 lemma neg_right : (-I).right = -I.left := by rfl
 
 @[simp]
+lemma sub_eq_neg_add : I - J = I + (-J) := by rfl
+
+@[simp]
+lemma left_sub_eq : (I - J).left = I.left - J.right := by
+  simp only [sub_eq_neg_add, left_add_eq, neg_left, Dyadic.sub_eq_add_neg]
+
+@[simp]
+lemma right_sub_eq : (I - J).right = I.right - J.left := by
+  simp only [sub_eq_neg_add, right_add_eq, neg_right, Dyadic.sub_eq_add_neg]
+
+@[simp]
 theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := by
   constructor
   · intro h
@@ -319,11 +344,34 @@ theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := b
     simp only [mk.injEq] at *
     exact h
 
---review this
+@[simp]
+theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
+
 @[simp]
 lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
   simp only [productEndpts, Dyadic.mul_comm]
   grind only [= Set.mem_singleton_iff, = mem_singleton, = insert_eq_of_mem, = mem_insert, cases Or]
+
+-- maybe we won't need these
+-- def all_endpts : Finset Dyadic :=
+--     {I.left*J.left*K.left, I.left*J.left*K.right, I.left*J.right*K.left, I.left*J.right*K.right,
+--     I.right*J.left*K.left, I.right*J.left*K.right, I.right*J.right*K.left, I.right*J.right*K.right}
+
+-- lemma product_endpts_assoc_min :
+--   ((I * J).productEndpts K).min' (by simp) = (I.productEndpts (J * K)).min' (by simp) := by
+--   have h : ((I * J).productEndpts K).min' (by simp) = (all_endpts I J K).min' (by sorry) :=
+--     by sorry
+--   have h' : (I.productEndpts (J * K)).min' (by simp) = (all_endpts I J K).min' (by sorry) :=
+--     by sorry
+--   rw [h, h']
+
+-- lemma product_endpts_assoc_max :
+--   ((I * J).productEndpts K).max' (by simp) = (I.productEndpts (J * K)).max' (by simp) := by
+--   have h : ((I * J).productEndpts K).max' (by simp) = (all_endpts I J K).max' (by sorry) :=
+--     by sorry
+--   have h' : (I.productEndpts (J * K)).max' (by simp) = (all_endpts I J K).max' (by sorry) :=
+--     by sorry
+--   rw [h, h']
 
 @[simp]
 lemma product_endpts_zero : productEndpts I 0 = {0} := by
@@ -341,11 +389,9 @@ lemma product_endpts_one : productEndpts I 1 = {I.left, I.right} := by
 theorem add_comm : I + J = J + I := by
   simp only [eq_iff_left_right, left_add_eq, right_add_eq, Dyadic.add_comm, and_self]
 
-
 @[simp]
 theorem add_assoc : (I + J) + K = I + (J + K) := by
   simp only [eq_iff_left_right, left_add_eq, right_add_eq, Dyadic.add_assoc, and_self]
-
 
 @[simp]
 theorem zero_add : I + 0 = I := by
@@ -361,6 +407,10 @@ theorem add_zero : 0 + I = I := by
 @[simp]
 theorem mul_comm : I * J = J * I := by
   simp only [eq_iff_left_right, mul_left_endpt, mul_right_endpt, product_endpts_comm, and_self]
+
+@[simp]
+theorem mul_assoc : (I * J) * K = I * (J * K) := by sorry
+-- Will prove this by sharpness of multiplication later
 
 @[simp]
 theorem neg_mul : -I * J = - (I * J) := by
@@ -384,6 +434,7 @@ theorem neg_mul : -I * J = - (I * J) := by
       grind only [cases Or]
 
 -- neg_add_cancel is not true!
+-- [-1,1] - [-1,1] = [-2,2]
 
 @[simp]
 theorem mul_zero : I * 0 = 0 := by
@@ -403,9 +454,52 @@ theorem mul_one : I * 1 = I := by
 @[simp]
 theorem one_mul : 1 * I = I := by rw [mul_comm, mul_one]
 
+theorem add_sound : ∀ x ∈ I, ∀ y ∈ J, x + y ∈ (I + J) := by
+  intro x hx y hy
+  constructor
+  · rw [left_add_eq, toRat_add, Rat.cast_add]
+    apply add_le_add
+    · exact hx.left
+    · exact hy.left
+  · rw [right_add_eq, toRat_add, Rat.cast_add]
+    apply add_le_add
+    · exact hx.right
+    · exact hy.right
+
+theorem neg_sound : ∀ x ∈ I, -x ∈ -I := by
+  intro x hx
+  constructor
+  · rw [neg_left, toRat_neg, Rat.cast_neg]
+    apply neg_le_neg
+    exact hx.right
+  · rw [neg_right, toRat_neg, Rat.cast_neg]
+    apply neg_le_neg
+    exact hx.left
+
+theorem sub_sound : ∀ x ∈ I, ∀ y ∈ J, x - y ∈ (I - J) := by
+  intro x hx y hy
+  constructor
+  · rw [left_sub_eq, toRat_sub, Rat.cast_sub]
+    apply sub_le_sub
+    · exact hx.left
+    · exact hy.right
+  · rw [right_sub_eq, toRat_sub, Rat.cast_sub]
+    apply sub_le_sub
+    · exact hx.right
+    · exact hy.left
+
+theorem mul_sound : ∀ x ∈ I, ∀ y ∈ J, x * y ∈ (I * J) := by
+  intro x hx y hy
+  constructor
+  · sorry
+  · sorry
+
+theorem pow_sound : ∀ x ∈ I, ∀ n : ℕ, x ^ n ∈ (I ^ n) := by sorry
+
 end
 end DyadicInterval
 
+def x := (0 : ℝ)
 def a := Dyadic.ofOdd (-3) 5 (by ring)
 def b := Dyadic.ofOdd (7) 3 (by ring)
 def I : DyadicInterval := ⟨a, b, by decide⟩
