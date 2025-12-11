@@ -302,9 +302,6 @@ lemma left_coe_zero : (0 : DyadicInterval).left = 0 := by rfl
 lemma right_coe_zero : (0 : DyadicInterval).right = 0 := by rfl
 
 @[simp]
-theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
-
-@[simp]
 lemma left_add_eq : (I + J).left = I.left + J.left := by rfl
 
 @[simp]
@@ -333,6 +330,9 @@ lemma left_sub_eq : (I - J).left = I.left - J.right := by
 @[simp]
 lemma right_sub_eq : (I - J).right = I.right - J.left := by
   simp only [sub_eq_neg_add, right_add_eq, neg_right, Dyadic.sub_eq_add_neg]
+
+@[simp]
+theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
 
 @[simp]
 theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := by
@@ -376,7 +376,7 @@ lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
 
 lemma mul_left_le_left_mul (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ ↑I.left.toRat * y := by
   rw [mem_iff_le_endpts] at hy
-  rcases le_or_gt 0 (I.left.toRat : ℝ) with hl | hr
+  rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.left.toRat * J.left.toRat := by
       norm_cast
       rw [← toRat_mul, ← le_iff_toRat]
@@ -388,11 +388,11 @@ lemma mul_left_le_left_mul (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ 
       rw [← toRat_mul, ← le_iff_toRat]
       apply min'_le
       simp only [productEndpts, mem_insert, mem_singleton, true_or, or_true]
-    apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr.le)
+    apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr)
 
 lemma mul_left_le_right_mul (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ ↑I.right.toRat * y := by
   rw [mem_iff_le_endpts] at hy
-  rcases le_or_gt 0 (I.right.toRat : ℝ) with hl | hr
+  rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.right.toRat * J.left.toRat := by
       norm_cast
       rw [← toRat_mul, ← le_iff_toRat]
@@ -404,11 +404,11 @@ lemma mul_left_le_right_mul (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤
       rw [← toRat_mul, ← le_iff_toRat]
       apply min'_le
       simp only [productEndpts, mem_insert, mem_singleton, or_true]
-    apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr.le)
+    apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr)
 
 lemma left_mul_le_mul_right (y : ℝ) (hy : y ∈ J) : ↑I.left.toRat * y ≤ ↑(I * J).right.toRat := by
   rw [mem_iff_le_endpts] at hy
-  rcases le_or_gt 0 (I.left.toRat : ℝ) with hl | hr
+  rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
   · have h₁ : I.left.toRat * J.right.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
       rw [← toRat_mul, ← le_iff_toRat]
@@ -420,11 +420,11 @@ lemma left_mul_le_mul_right (y : ℝ) (hy : y ∈ J) : ↑I.left.toRat * y ≤ �
       rw [← toRat_mul, ← le_iff_toRat]
       apply le_max'
       simp only [productEndpts, mem_insert, mem_singleton, true_or]
-    exact le_trans (mul_le_mul_of_nonpos_left hy.left hr.le) h₁
+    exact le_trans (mul_le_mul_of_nonpos_left hy.left hr) h₁
 
 lemma right_mul_le_mul_right (y : ℝ) (hy : y ∈ J) : ↑I.right.toRat * y ≤ ↑(I * J).right.toRat := by
   rw [mem_iff_le_endpts] at hy
-  rcases le_or_gt 0 (I.right.toRat : ℝ) with hl | hr
+  rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
   · have h₁ : I.right.toRat * J.right.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
       rw [← toRat_mul, ← le_iff_toRat]
@@ -436,7 +436,7 @@ lemma right_mul_le_mul_right (y : ℝ) (hy : y ∈ J) : ↑I.right.toRat * y ≤
       rw [← toRat_mul, ← le_iff_toRat]
       apply le_max'
       simp only [productEndpts, mem_insert, mem_singleton, true_or, or_true]
-    exact le_trans (mul_le_mul_of_nonpos_left hy.left hr.le) h₁
+    exact le_trans (mul_le_mul_of_nonpos_left hy.left hr) h₁
 
 @[simp]
 lemma product_endpts_zero : productEndpts I 0 = {0} := by
@@ -556,7 +556,7 @@ theorem sub_sound : ∀ x ∈ I, ∀ y ∈ J, x - y ∈ (I - J) := by
 theorem mul_sound : ∀ x ∈ I, ∀ y ∈ J, x * y ∈ (I * J) := by
   intro x hx y hy
   rw [mem_iff_le_endpts] at hx
-  rcases le_or_gt 0 y with hl | hr
+  rcases le_total 0 y with hl | hr
   · have h₁ : ↑I.left.toRat * y ≤ x * y ∧ x * y ≤ ↑I.right.toRat * y := by
       constructor
       · apply mul_le_mul_of_nonneg_right hx.left hl
@@ -566,13 +566,73 @@ theorem mul_sound : ∀ x ∈ I, ∀ y ∈ J, x * y ∈ (I * J) := by
     · exact le_trans h₁.right (right_mul_le_mul_right I J y hy)
   · have h₁ : x * y ≤ ↑I.left.toRat * y ∧ ↑I.right.toRat * y ≤ x * y := by
       constructor
-      · apply mul_le_mul_of_nonpos_right hx.left hr.le
-      · apply mul_le_mul_of_nonpos_right hx.right hr.le
+      · apply mul_le_mul_of_nonpos_right hx.left hr
+      · apply mul_le_mul_of_nonpos_right hx.right hr
     constructor
     · exact le_trans (mul_left_le_right_mul I J y hy) h₁.right
     · exact le_trans h₁.left (left_mul_le_mul_right I J y hy)
 
-theorem pow_sound : ∀ x ∈ I, ∀ n : ℕ, x ^ n ∈ (I ^ n) := by sorry
+theorem pow_sound : ∀ x ∈ I, ∀ n : ℕ, x ^ n ∈ (I ^ n) := by
+  intro x hx n
+  change x ^ n ∈ DyadicInterval.powExact I n
+  unfold powExact
+  split
+  -- n = 0
+  · simp only [pow_zero, mem_iff_le_endpts]
+    norm_cast
+  · split
+    -- n is odd
+    · simp only [Nat.succ_eq_add_one, mem_iff_le_endpts, powEven]
+      rename_i n' n hn
+      let S : Finset Dyadic := {0, I.left ^ (n + 1), I.right ^ (n + 1)}
+      have hS : S.Nonempty := by exact insert_nonempty 0 {I.left ^ (n + 1), I.right ^ (n + 1)}
+      let s := S.min' hS
+      let s' := S.max' hS
+      change s.toRat ≤ x ^ (n + 1) ∧ x ^ (n + 1) ≤ s'.toRat
+      have h : Even (n + 1) := by exact Nat.even_iff.mpr hn
+      constructor
+      · have h₁ : 0 ≤ x ^ (n + 1) := by apply Even.pow_nonneg h
+        have h₂ : s.toRat ≤ (0 : ℝ) := by
+          norm_cast
+          rw [← toRat_zero, ← le_iff_toRat]
+          apply min'_le
+          simp only [S, mem_insert, mem_singleton, true_or]
+        exact le_trans h₂ h₁
+      · rcases le_total 0 x with hnn | hn
+        · have h₁ : x ^ (n + 1) ≤ (I.right ^ (n + 1)).toRat := by
+            rw [toRat_pow, Rat.cast_pow]
+            apply pow_le_pow_left₀ hnn hx.right
+          have h₂ : (I.right ^ (n + 1)).toRat ≤ (s'.toRat : ℝ) := by
+            norm_cast
+            rw [← le_iff_toRat]
+            apply le_max'
+            simp only [S, mem_insert, mem_singleton, or_true]
+          exact le_trans h₁ h₂
+        · have h₁ : x ^ (n + 1) ≤ (I.left ^ (n + 1)).toRat := by
+            rw [toRat_pow, ← Even.neg_pow h, ← Even.neg_pow h (I.left.toRat), Rat.cast_pow]
+            apply pow_le_pow_left₀
+            · grind only
+            · simp only [Rat.cast_neg, neg_le_neg_iff, hx.left]
+          have h₂ : (I.left ^ (n + 1)).toRat ≤ (s'.toRat : ℝ) := by
+            norm_cast
+            rw [← le_iff_toRat]
+            apply le_max'
+            simp only [S, mem_insert, mem_singleton, true_or, or_true]
+          exact le_trans h₁ h₂
+
+    -- n is even
+    · simp only [Nat.succ_eq_add_one, mem_iff_le_endpts, powOdd, toRat_pow, Rat.cast_pow]
+      rename_i n' n hn
+      have hn₁ : Odd (n + 1) := by exact Nat.odd_iff.mpr hn
+      constructor
+      · rw [Odd.pow_le_pow hn₁]
+        exact hx.left
+      · rw [Odd.pow_le_pow hn₁]
+        exact hx.right
+
+    -- unreachable
+    · rename_i h
+      grind only
 
 end
 end DyadicInterval
