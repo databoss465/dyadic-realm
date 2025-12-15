@@ -202,7 +202,7 @@ structure DyadicInterval where
 ---------------------------------------------------------------------
 namespace DyadicInterval
 section
-variable (I J K : DyadicInterval)(a : Dyadic)
+variable (I J K : DyadicInterval)(a : Dyadic)(n : ℕ)
 
 
 def ofDyadic (a : Dyadic) : DyadicInterval := ⟨a, a, le_rfl⟩
@@ -474,10 +474,6 @@ theorem mul_comm : I * J = J * I := by
   simp only [eq_iff_left_right, mul_left_endpt, mul_right_endpt, product_endpts_comm, and_self]
 
 @[simp]
-theorem mul_assoc : (I * J) * K = I * (J * K) := by sorry
--- Will prove this by sharpness of multiplication later
-
-@[simp]
 theorem neg_mul : -I * J = - (I * J) := by
   simp only [eq_iff_left_right]
   constructor
@@ -633,6 +629,64 @@ theorem pow_sound : ∀ x ∈ I, ∀ n : ℕ, x ^ n ∈ (I ^ n) := by
     -- unreachable
     · rename_i h
       grind only
+
+theorem add_sharp : ∀ z ∈ (I + J), ∃ x ∈ I, ∃ y ∈ J, x + y = z := by
+  intro z hz
+  rw [add_comm] at hz
+  simp only [mem_iff_le_endpts, left_add_eq, right_add_eq, toRat_add, Rat.cast_add] at hz
+  let x' := max (I.left.toRat : ℝ) (z - J.right.toRat)
+  have hx' : x' ∈ I := by
+    rw [mem_iff_le_endpts]
+    constructor
+    · apply le_max_left
+    · rcases max_choice (I.left.toRat : ℝ) (z - J.right.toRat) with hl | hr
+      · simp only [x', hl, Rat.cast_le, ← le_iff_toRat, I.isValid]
+      · simp only [x', hr]
+        grind only
+  let y' := z - x'
+  have hy' : y' ∈ J := by
+    unfold y'
+    rw [mem_iff_le_endpts] at *
+    constructor
+    · rw [le_sub_comm]
+      rcases max_choice (I.left.toRat : ℝ) (z - J.right.toRat) with hl | hr
+      · simp only [x', hl]
+        grind only
+      · simp only [x', hr, sub_le_sub_iff_left, Rat.cast_le, ← le_iff_toRat, J.isValid]
+    · rw [sub_le_comm]
+      apply le_max_right
+  use x', hx', y', hy'
+  simp only [y', add_sub_cancel]
+
+theorem neg_sharp : ∀ z ∈ (-I), ∃ x ∈ I, -x = z := by
+-- Although this is fine, consider using IVT
+  intro z hz
+  simp only [mem_iff_le_endpts, neg_right, neg_left, toRat_neg, Rat.cast_neg] at hz
+  use -z
+  constructor
+  · rw [mem_iff_le_endpts]
+    grind only [cases Or]
+  · simp only [neg_neg]
+
+theorem sub_sharp : ∀ z ∈ (I - J), ∃ x ∈ I, ∃ y ∈ J, x - y = z := by
+  intro z hz
+  rw [sub_eq_neg_add] at hz
+  rcases add_sharp I (-J) z hz with ⟨x, hx, y', hy', hxy'⟩
+  rcases neg_sharp J y' hy' with ⟨y, hy, hyy'⟩
+  use x, hx, y, hy
+  grind
+
+theorem mul_sharp : ∀ z ∈ (I * J), ∃ x ∈ I, ∃ y ∈ J, x * y = z := by
+  sorry
+
+theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
+  sorry
+
+@[simp]
+theorem mul_assoc : (I * J) * K = I * (J * K) := by sorry
+-- Will prove this by sharpness of multiplication later
+
+-- Distributivity doesn't hold in either direction. Choose counterexamples
 
 end
 end DyadicInterval
