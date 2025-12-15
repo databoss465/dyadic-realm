@@ -335,6 +335,18 @@ lemma right_sub_eq : (I - J).right = I.right - J.left := by
 theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
 
 @[simp]
+theorem mem_iff_mem_Icc : ∀ x : ℝ, x ∈ I ↔ x ∈ Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ) := by
+  intro x; simp only [mem_iff_le_endpts, Set.mem_Icc]
+
+@[simp]
+lemma left_mem : (I.left.toRat : ℝ) ∈ I := by
+  simp only [mem_iff_le_endpts, le_refl, Rat.cast_le, true_and, ← le_iff_toRat, I.isValid]
+
+@[simp]
+lemma right_mem : (I.right.toRat : ℝ) ∈ I := by
+  simp only [mem_iff_le_endpts, Rat.cast_le, le_refl, and_true, ← le_iff_toRat, I.isValid]
+
+@[simp]
 theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := by
   constructor
   · intro h
@@ -347,6 +359,15 @@ theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := b
     cases J
     simp only [mk.injEq] at *
     exact h
+
+@[simp]
+lemma mul_left_mem_product_endpts : (I * J).left ∈ productEndpts I J := by
+  simp only [mul_left_endpt, min'_mem]
+
+@[simp]
+lemma mul_right_mem_product_endpts : (I * J).right ∈ productEndpts I J := by
+  simp only [mul_right_endpt, max'_mem]
+
 
 @[simp]
 lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
@@ -515,6 +536,7 @@ theorem mul_one : I * 1 = I := by
 @[simp]
 theorem one_mul : 1 * I = I := by rw [mul_comm, mul_one]
 
+-- Soundness of Operations
 theorem add_sound : ∀ x ∈ I, ∀ y ∈ J, x + y ∈ (I + J) := by
   intro x hx y hy
   constructor
@@ -630,6 +652,7 @@ theorem pow_sound : ∀ x ∈ I, ∀ n : ℕ, x ^ n ∈ (I ^ n) := by
     · rename_i h
       grind only
 
+-- Sharpness of Operations
 theorem add_sharp : ∀ z ∈ (I + J), ∃ x ∈ I, ∃ y ∈ J, x + y = z := by
   intro z hz
   rw [add_comm] at hz
@@ -674,12 +697,64 @@ theorem sub_sharp : ∀ z ∈ (I - J), ∃ x ∈ I, ∃ y ∈ J, x - y = z := by
   rcases add_sharp I (-J) z hz with ⟨x, hx, y', hy', hxy'⟩
   rcases neg_sharp J y' hy' with ⟨y, hy, hyy'⟩
   use x, hx, y, hy
-  grind
+  grind only
+
+lemma productEndpts_image : ∀ z ∈ productEndpts I J, ∃ x ∈ I, ∃ y ∈ J, x * y = z.toRat := by
+  intro z hz
+  simp [productEndpts] at hz
+  rcases hz with rfl | rfl | rfl | rfl
+  · use I.left.toRat, left_mem I, J.left.toRat, left_mem J; simp only [toRat_mul, Rat.cast_mul]
+  · use I.left.toRat, left_mem I, J.right.toRat, right_mem J; simp only [toRat_mul, Rat.cast_mul]
+  · use I.right.toRat, right_mem I, J.left.toRat, left_mem J; simp only [toRat_mul, Rat.cast_mul]
+  · use I.right.toRat, right_mem I, J.right.toRat, right_mem J; simp only [toRat_mul, Rat.cast_mul]
 
 theorem mul_sharp : ∀ z ∈ (I * J), ∃ x ∈ I, ∃ y ∈ J, x * y = z := by
-  sorry
+  intro z hz
+  rw [mem_iff_le_endpts] at hz
+  let Domain := Set.Icc (I.left.toRat : ℝ) I.right.toRat ×ˢ Set.Icc (J.left.toRat : ℝ) J.right.toRat
+  let Image := (fun (p : ℝ × ℝ) ↦ p.1 * p.2) '' Domain
+
+  have h₁ : IsConnected Domain := by
+    apply IsConnected.prod
+    · apply isConnected_Icc
+      simp only [Rat.cast_le, ← le_iff_toRat, I.isValid]
+    · apply isConnected_Icc
+      simp only [Rat.cast_le, ← le_iff_toRat, J.isValid]
+
+  have h₂ : IsConnected Image := by
+    apply IsConnected.image h₁
+    apply Continuous.continuousOn
+    exact continuous_mul
+
+  have h₃ : ((I * J).left.toRat : ℝ) ∈ Image := by
+    simp only [Image, Set.mem_image, Prod.exists]
+    obtain ⟨x, hx, y, hy, hxy⟩ := productEndpts_image I J (I * J).left (mul_left_mem_product_endpts I J)
+    use x, y
+    constructor
+    · simp only [Domain, Set.Icc_prod_Icc, Set.mem_Icc, Prod.mk_le_mk]
+      rw [mem_iff_le_endpts] at hx hy
+      grind only
+    · exact hxy
+  have h₄ : ((I * J).right.toRat : ℝ) ∈ Image := by
+    simp only [Image, Set.mem_image, Prod.exists]
+    obtain ⟨x, hx, y, hy, hxy⟩ := productEndpts_image I J (I * J).right (mul_right_mem_product_endpts I J)
+    use x, y
+    constructor
+    · simp only [Domain, Set.Icc_prod_Icc, Set.mem_Icc, Prod.mk_le_mk]
+      rw [mem_iff_le_endpts] at hx hy
+      grind only
+    · exact hxy
+
+  have h : z ∈ Image := by
+    apply Set.mem_of_subset_of_mem
+    apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
+    simp only [Set.mem_Icc, hz, and_self]
+
+  rcases h with ⟨⟨x,y⟩, ⟨hx, hy⟩, h_mem⟩
+  use x, hx, y, hy
 
 theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
+  intro z hz
   sorry
 
 @[simp]
