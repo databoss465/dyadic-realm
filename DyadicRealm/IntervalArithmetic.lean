@@ -863,10 +863,15 @@ end Exactness
 
 @[simp]
 theorem mul_assoc' : (I * J) * K = I * (J * K) := by
-  apply ext
+  ext z
   simp only [mul_exact, Set.image2_mul]
-  -- apply @_root_.mul_assoc (I : Set ℝ) (J : Set ℝ) (K : Set ℝ)
-  sorry
+  constructor
+  · intro h
+    simp only [Set.mem_mul] at *
+    grind only
+  · intro h
+    simp only [Set.mem_mul] at *
+    grind only
 
 -- Will prove this by sharpness of multiplication later
 
