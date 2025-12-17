@@ -1,5 +1,5 @@
 import Mathlib
-open Dyadic Finset
+open Dyadic
 -- set_option diagnostics true
 set_option linter.style.commandStart false
 set_option linter.unusedVariables false
@@ -17,6 +17,8 @@ lt_iff_le_not_ge := by
   apply Std.le_of_lt h
 
 namespace Dyadic
+section
+open Finset
 
 @[simp]
 theorem add_le_add' {a b c d : Dyadic} (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
@@ -61,6 +63,13 @@ lemma neg_max'_neg (S S' : Finset Dyadic) (hS : S.Nonempty) (hS' : S'.Nonempty)
     apply min'_le
     exact hS₂
 
+lemma toRat_eq {a b : Dyadic} : a.toRat = b.toRat ↔ a = b := by
+  constructor
+  · intro h
+    rw [le_antisymm_iff] at *
+    simp only [le_iff_toRat, h, and_true]
+  · intro h; rw [h]
+
 @[simp]
 lemma toRat_max {a b : Dyadic} : (max a b).toRat = max a.toRat b.toRat := by
   rcases le_total a b with ha | hb
@@ -78,6 +87,7 @@ lemma toRat_min {a b : Dyadic} : (min a b).toRat = min a.toRat b.toRat := by
   · rw [min_eq_right hb, min_eq_right]
     rw [← le_iff_toRat]; exact hb
 
+end
 end Dyadic
 
 structure DyadicInterval where
@@ -91,9 +101,17 @@ namespace DyadicInterval
 section
 variable (I J K : DyadicInterval)(a : Dyadic)(n : ℕ)
 
+@[simp]
+theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := by
+  constructor
+  · intro h; cases I; cases J
+    simp only [mk.injEq] at *
+    exact h
+  · intro h; cases I; cases J
+    simp only [mk.injEq] at *
+    exact h
 
-def ofDyadic (a : Dyadic) : DyadicInterval := ⟨a, a, le_rfl⟩
-
+def ofDyadic : DyadicInterval := ⟨a, a, le_rfl⟩
 instance : Coe Dyadic DyadicInterval := ⟨DyadicInterval.ofDyadic⟩
 
 instance (n : Nat) : OfNat DyadicInterval n :=
@@ -105,12 +123,39 @@ instance : NatCast DyadicInterval :=
 instance : IntCast DyadicInterval :=
   ⟨fun z => ((z : Dyadic) : DyadicInterval)⟩
 
-def Mem (x : ℝ) : Prop := I.left.toRat ≤ x ∧ x ≤ I.right.toRat
--- def Mem (x : Dyadic) : Prop := x ∈ Icc (I.left.toRat) (I.right.toRat)    Fix this?
+@[simp] lemma left_coe_zero : (0 : DyadicInterval).left = 0 := by rfl
 
+@[simp] lemma right_coe_zero : (0 : DyadicInterval).right = 0 := by rfl
+
+def toSet : Set ℝ := Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ)
+instance : Coe DyadicInterval (Set ℝ) := ⟨toSet⟩
+
+def Mem (x : ℝ) : Prop := x ∈ (I : Set ℝ)
 instance : Membership ℝ DyadicInterval where mem := DyadicInterval.Mem
 
--- instance {x : ℝ} : Decidable (x ∈ I) := sorry
+@[simp]
+theorem mem_iff_mem_Icc : ∀ x : ℝ, x ∈ I ↔ x ∈ Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ) := by intro x; rfl
+
+@[simp]
+theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
+
+@[simp] lemma left_mem : (I.left.toRat : ℝ) ∈ I := by
+  simp only [mem_iff_le_endpts, le_refl, Rat.cast_le, true_and, ← le_iff_toRat, I.isValid]
+
+@[simp] lemma right_mem : (I.right.toRat : ℝ) ∈ I := by
+  simp only [mem_iff_le_endpts, Rat.cast_le, le_refl, and_true, ← le_iff_toRat, I.isValid]
+
+@[ext] theorem ext : (I : Set ℝ) = ↑J → I = J := by
+  intro h
+  simp only [toSet] at h
+  rw [Set.Icc_eq_Icc_iff] at h
+  · norm_cast at h
+    simp only [toRat_eq] at h
+    rw [eq_iff_left_right]
+    exact h
+  · norm_cast
+    rw [← le_iff_toRat]
+    exact I.isValid
 
 def add : DyadicInterval :=
   let l := I.left + J.left
@@ -119,6 +164,10 @@ def add : DyadicInterval :=
   ⟨l, r, h⟩
 
 instance : Add DyadicInterval := ⟨DyadicInterval.add⟩
+
+@[simp] lemma left_add_eq : (I + J).left = I.left + J.left := by rfl
+
+@[simp] lemma right_add_eq : (I + J).right = I.right + J.right := by rfl
 
 def neg (I : DyadicInterval) : DyadicInterval :=
   have h : -I.right ≤ -I.left := by
@@ -129,21 +178,37 @@ def neg (I : DyadicInterval) : DyadicInterval :=
 
 instance : Neg DyadicInterval := ⟨DyadicInterval.neg⟩
 
+@[simp] lemma neg_left : (- I).left = -I.right := by rfl
+
+@[simp] lemma neg_right : (-I).right = -I.left := by rfl
+
 def sub : DyadicInterval := I + (-J)
 
-instance : Sub DyadicInterval where
-  sub := DyadicInterval.sub
+instance : Sub DyadicInterval where sub := DyadicInterval.sub
 
+@[simp] lemma sub_eq_neg_add : I - J = I + (-J) := by rfl
+
+@[simp] lemma left_sub_eq : (I - J).left = I.left - J.right := by
+  simp only [sub_eq_neg_add, left_add_eq, neg_left, Dyadic.sub_eq_add_neg]
+
+@[simp] lemma right_sub_eq : (I - J).right = I.right - J.left := by
+  simp only [sub_eq_neg_add, right_add_eq, neg_right, Dyadic.sub_eq_add_neg]
+
+section Multiplication
+open Finset
 def productEndpts : Finset Dyadic :=
   {(I.left * J.left),
   (I.left * J.right),
   (I.right * J.left),
   (I.right * J.right)}
 
-@[simp]
-lemma product_endpts_nonempty : (productEndpts I J).Nonempty := by
+@[simp] lemma product_endpts_nonempty : (productEndpts I J).Nonempty := by
   unfold productEndpts
   exact insert_nonempty (I.left * J.left) {I.left * J.right, I.right * J.left, I.right * J.right}
+
+@[simp] lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
+  simp only [productEndpts, Dyadic.mul_comm]
+  grind only [= Set.mem_singleton_iff, = mem_singleton, = insert_eq_of_mem, = mem_insert, cases Or]
 
 def mul : DyadicInterval :=
   let s := productEndpts I J
@@ -151,6 +216,19 @@ def mul : DyadicInterval :=
   ⟨min' s hs, max' s hs, min'_le_max' s hs⟩
 
 instance : Mul DyadicInterval := ⟨DyadicInterval.mul⟩
+
+@[simp] lemma mul_left_endpt : (I * J).left =
+  (productEndpts I J).min' (product_endpts_nonempty I J) := by rfl
+
+@[simp] lemma mul_right_endpt : (I * J).right =
+  (productEndpts I J).max' (product_endpts_nonempty I J) := by rfl
+
+@[simp] lemma mul_left_mem_product_endpts : (I * J).left ∈ productEndpts I J := by
+  simp only [mul_left_endpt, min'_mem]
+
+@[simp] lemma mul_right_mem_product_endpts : (I * J).right ∈ productEndpts I J := by
+  simp only [mul_right_endpt, max'_mem]
+end Multiplication
 
 def powOdd (n : ℕ) (hn : n % 2 = 1) : DyadicInterval :=
   have h : I.left ^ n ≤ I.right ^ n := by
@@ -191,106 +269,8 @@ def pow (I : DyadicInterval) : ℕ → DyadicInterval
 
 instance : Pow DyadicInterval Nat := ⟨DyadicInterval.powExact⟩
 
-@[simp]
-lemma left_coe_zero : (0 : DyadicInterval).left = 0 := by rfl
-
-@[simp]
-lemma right_coe_zero : (0 : DyadicInterval).right = 0 := by rfl
-
-@[simp]
-lemma left_add_eq : (I + J).left = I.left + J.left := by rfl
-
-@[simp]
-lemma right_add_eq : (I + J).right = I.right + J.right := by rfl
-
-@[simp]
-lemma mul_left_endpt : (I * J).left =
-  (productEndpts I J).min' (product_endpts_nonempty I J) := by rfl
-
-@[simp]
-lemma mul_right_endpt : (I * J).right =
-  (productEndpts I J).max' (product_endpts_nonempty I J) := by rfl
-@[simp]
-lemma neg_left : (- I).left = -I.right := by rfl
-
-@[simp]
-lemma neg_right : (-I).right = -I.left := by rfl
-
-@[simp]
-lemma sub_eq_neg_add : I - J = I + (-J) := by rfl
-
-@[simp]
-lemma left_sub_eq : (I - J).left = I.left - J.right := by
-  simp only [sub_eq_neg_add, left_add_eq, neg_left, Dyadic.sub_eq_add_neg]
-
-@[simp]
-lemma right_sub_eq : (I - J).right = I.right - J.left := by
-  simp only [sub_eq_neg_add, right_add_eq, neg_right, Dyadic.sub_eq_add_neg]
-
-@[simp]
-theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
-
-@[simp]
-theorem mem_iff_mem_Icc : ∀ x : ℝ, x ∈ I ↔ x ∈ Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ) := by
-  intro x; simp only [mem_iff_le_endpts, Set.mem_Icc]
-
-@[simp]
-lemma left_mem : (I.left.toRat : ℝ) ∈ I := by
-  simp only [mem_iff_le_endpts, le_refl, Rat.cast_le, true_and, ← le_iff_toRat, I.isValid]
-
-@[simp]
-lemma right_mem : (I.right.toRat : ℝ) ∈ I := by
-  simp only [mem_iff_le_endpts, Rat.cast_le, le_refl, and_true, ← le_iff_toRat, I.isValid]
-
-@[simp]
-theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := by
-  constructor
-  · intro h
-    cases I
-    cases J
-    simp only [mk.injEq] at *
-    exact h
-  · intro h
-    cases I
-    cases J
-    simp only [mk.injEq] at *
-    exact h
-
-@[simp]
-lemma mul_left_mem_product_endpts : (I * J).left ∈ productEndpts I J := by
-  simp only [mul_left_endpt, min'_mem]
-
-@[simp]
-lemma mul_right_mem_product_endpts : (I * J).right ∈ productEndpts I J := by
-  simp only [mul_right_endpt, max'_mem]
-
-
-@[simp]
-lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
-  simp only [productEndpts, Dyadic.mul_comm]
-  grind only [= Set.mem_singleton_iff, = mem_singleton, = insert_eq_of_mem, = mem_insert, cases Or]
-
--- maybe we won't need these
--- def all_endpts : Finset Dyadic :=
---     {I.left*J.left*K.left, I.left*J.left*K.right, I.left*J.right*K.left, I.left*J.right*K.right,
---     I.right*J.left*K.left, I.right*J.left*K.right, I.right*J.right*K.left, I.right*J.right*K.right}
-
--- lemma product_endpts_assoc_min :
---   ((I * J).productEndpts K).min' (by simp) = (I.productEndpts (J * K)).min' (by simp) := by
---   have h : ((I * J).productEndpts K).min' (by simp) = (all_endpts I J K).min' (by sorry) :=
---     by sorry
---   have h' : (I.productEndpts (J * K)).min' (by simp) = (all_endpts I J K).min' (by sorry) :=
---     by sorry
---   rw [h, h']
-
--- lemma product_endpts_assoc_max :
---   ((I * J).productEndpts K).max' (by simp) = (I.productEndpts (J * K)).max' (by simp) := by
---   have h : ((I * J).productEndpts K).max' (by simp) = (all_endpts I J K).max' (by sorry) :=
---     by sorry
---   have h' : (I.productEndpts (J * K)).max' (by simp) = (all_endpts I J K).max' (by sorry) :=
---     by sorry
---   rw [h, h']
-
+section Multiplication2
+open Finset
 lemma mul_left_le_left_mul (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ ↑I.left.toRat * y := by
   rw [mem_iff_le_endpts] at hy
   rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
@@ -428,7 +408,7 @@ theorem mul_one : I * 1 = I := by
   constructor
   · simp only [min'_eq_iff, mem_insert, mem_singleton, true_or, forall_eq_or_imp, le_refl, forall_eq, true_and, I.isValid]
   · simp only [max'_eq_iff, mem_insert, mem_singleton, or_true, forall_eq_or_imp, forall_eq, le_refl, and_true, I.isValid]
-
+end Multiplication2
 @[simp]
 theorem one_mul : 1 * I = I := by rw [mul_comm, mul_one]
 
@@ -810,7 +790,6 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
     rcases h with ⟨x, hx, hx'⟩
     use x, hx, hx'
 
-
 theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
   intro z hz
   change z ∈ DyadicInterval.powExact I n at hz
@@ -836,25 +815,62 @@ theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
     -- unreachable
     · grind only
 
+-- Exactness of Operations
+section Exactness
+open Set
+
+theorem add_exact : (I + J : Set ℝ) = image2 (· + ·) I J := by
+  apply Subset.antisymm
+  · intro z hz
+    obtain ⟨x, hx, y, hy, rfl⟩ := add_sharp I J z hz
+    exact mem_image2_of_mem hx hy
+  · rintro _ ⟨x, hx, y, hy, rfl⟩
+    exact add_sound I J x hx y hy
+
+theorem neg_exact : ↑(-I) = Set.image Neg.neg (I : Set ℝ) := by
+  apply Subset.antisymm
+  · intro z hz
+    obtain ⟨x, hx, rfl⟩ := neg_sharp I z hz
+    exact mem_image_of_mem _ hx
+  · rintro _ ⟨x, hx, rfl⟩
+    exact neg_sound I x hx
+
+theorem sub_exact : (I - J : Set ℝ) = image2 (· - ·) I J := by
+  apply Subset.antisymm
+  · intro z hz
+    obtain ⟨x, hx, y, hy, rfl⟩ := sub_sharp I J z hz
+    exact mem_image2_of_mem hx hy
+  · rintro _ ⟨x, hx, y, hy, rfl⟩
+    exact sub_sound I J x hx y hy
+
+theorem mul_exact : (I * J : Set ℝ) = image2 (· * ·) I J := by
+  apply Subset.antisymm
+  · intro z hz
+    obtain ⟨x, hx, y, hy, rfl⟩ := mul_sharp I J z hz
+    exact mem_image2_of_mem hx hy
+  · rintro _ ⟨x, hx, y, hy, rfl⟩
+    exact mul_sound I J x hx y hy
+
+theorem pow_exact : ↑(I^n) = (fun x ↦ x ^ n) '' (I : Set ℝ) := by
+  apply Subset.antisymm
+  · intro z hz
+    obtain ⟨x, hx, rfl⟩ := pow_sharp I n z hz
+    exact mem_image_of_mem _ hx
+  · rintro _ ⟨x, hx, rfl⟩
+    exact pow_sound I n x hx
+
+end Exactness
+
 @[simp]
-theorem mul_assoc : (I * J) * K = I * (J * K) := by sorry
+theorem mul_assoc' : (I * J) * K = I * (J * K) := by
+  apply ext
+  simp only [mul_exact, Set.image2_mul]
+  -- apply @_root_.mul_assoc (I : Set ℝ) (J : Set ℝ) (K : Set ℝ)
+  sorry
+
 -- Will prove this by sharpness of multiplication later
 
 -- Distributivity doesn't hold in either direction. Choose counterexamples
 
 end
 end DyadicInterval
-
-def x := (0 : ℝ)
-def a := Dyadic.ofOdd (-3) 5 (by ring)
-def b := Dyadic.ofOdd (7) 3 (by ring)
-def I : DyadicInterval := ⟨a, b, by decide⟩
-def J : DyadicInterval := ⟨a, b, by decide⟩
-def J' : DyadicInterval := ⟨(a-1), b, by decide⟩
-#eval I = J
-#eval I = J'
-#eval (I + J).left.toRat
-#eval (I + J).right.toRat
-#eval (I * J).left.toRat
-#eval (I * J).right.toRat
-#eval (I + 3).left.toRat
