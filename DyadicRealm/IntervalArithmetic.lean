@@ -162,15 +162,19 @@ def powOdd (n : ℕ) (hn : n % 2 = 1) : DyadicInterval :=
       exact hn
   ⟨(I.left ^ n), (I.right ^ n), h⟩
 
-def powEven (n : ℕ) (hn : n % 2 = 0): DyadicInterval :=
-  let s : Finset Dyadic := if (I.left ≤ 0 ∧ 0 ≤ I.right) then {0, (I.left^n), (I.right^n)}
-                          else {(I.left^n), (I.right^n)}
-  have hs : s.Nonempty := by
-    unfold s
+def powEven (n : ℕ) (hn : n % 2 = 0) : DyadicInterval :=
+  let r := max (I.left ^ n) (I.right ^ n)
+  let l := min (I.left ^ n) (I.right ^ n)
+  let l' := if I.left ≤ 0 ∧ 0 ≤ I.right then 0 else l
+  have h : l' ≤ r := by
+    rw [← Nat.even_iff] at hn
+    unfold l' r l
     split_ifs
-    · exact insert_nonempty 0 {(I.left^n), (I.right^n)}
-    · exact insert_nonempty (I.left^n) {(I.right^n)}
-  ⟨min' s hs, max' s hs, min'_le_max' s hs⟩
+    · apply le_max_of_le_left
+      rw [le_iff_toRat, toRat_zero, toRat_pow]
+      apply Even.pow_nonneg hn
+    · apply min_le_max
+  ⟨l', r, h⟩
 
 def powExact (n : ℕ) : DyadicInterval :=
   match n with
@@ -180,28 +184,6 @@ def powExact (n : ℕ) : DyadicInterval :=
       | 0 => powEven I (n + 1) h
       | 1 => powOdd I (n+1) h
       | n + 2 => by grind only
-
--- def powNonzero (n : ℕ) : DyadicInterval :=
---   let condition := n % 2 = 0 ∧ (I.left ≤ 0 ∧ 0 ≤ I.right)
---   let U := max (I.left^n) (I.right^n)
---   let L' := min (I.left^n) (I.right^n)
---   let L := if condition then 0 else L'
---   have h : L ≤ U := by
---     unfold L condition U
---     split_ifs with h
---     · have h₁ : 0 ≤ I.right^n := by
---         simp only [le_iff_toRat, toRat_pow]
---         have : Even n := Nat.even_iff.mpr h.left
---         apply Even.pow_nonneg this
---       exact le_trans h₁ (le_max_right (I.left ^ n) (I.right ^ n))
---     · unfold L'
---       exact min_le_max
---   ⟨L, U, h⟩
-
--- def powExact (n : ℕ) : DyadicInterval :=
---   match n with
---   | 0 => ⟨1, 1, le_rfl⟩
---   | n + 1 => powNonzero I (n + 1)
 
 def pow (I : DyadicInterval) : ℕ → DyadicInterval
 | 0     => 1
@@ -520,82 +502,35 @@ theorem powEven_sound (hn : n % 2 = 0) : ∀ x ∈ I, x ^ n ∈ powEven I n hn :
   rw [← Nat.even_iff] at hn
   split_ifs with h₀
   -- I crosses 0
-  · let S : Finset Dyadic := {0, I.left ^ n, I.right ^ n}
-    have hS : S.Nonempty := by exact insert_nonempty 0 {I.left ^ n, I.right ^ n}
-    let s := S.min' hS
-    let s' := S.max' hS
-    change s.toRat ≤ x ^ n ∧ x ^ n ≤ s'.toRat
-    constructor
-    · have h₁ : 0 ≤ x ^ n := by apply Even.pow_nonneg hn
-      have h₂ : s.toRat ≤ (0 : ℝ) := by
-        norm_cast
-        rw [← toRat_zero, ← le_iff_toRat]
-        apply min'_le
-        simp only [S, mem_insert, mem_singleton, true_or]
-      exact le_trans h₂ h₁
+  · constructor
+    · rw [toRat_zero, Rat.cast_zero]
+      apply Even.pow_nonneg hn
     · rcases le_total 0 x with hx' | hx'
-      · have h₁ : x ^ n ≤ (I.right ^ n).toRat := by
-          rw [toRat_pow, Rat.cast_pow]
-          apply pow_le_pow_left₀ hx' hx.right
-        have h₂ : (I.right ^ n).toRat ≤ (s'.toRat : ℝ) := by
-          norm_cast
-          rw [← le_iff_toRat]
-          apply le_max'
-          simp only [S, mem_insert, mem_singleton, or_true]
-        exact le_trans h₁ h₂
-      · have h₁ : x ^ n ≤ (I.left ^ n).toRat := by
-          rw [toRat_pow, ← Even.neg_pow hn, ← Even.neg_pow hn (I.left.toRat), Rat.cast_pow]
-          apply pow_le_pow_left₀
-          · grind only
-          · simp only [Rat.cast_neg, neg_le_neg_iff, hx.left]
-        have h₂ : (I.left ^ n).toRat ≤ (s'.toRat : ℝ) := by
-          norm_cast
-          rw [← le_iff_toRat]
-          apply le_max'
-          simp only [S, mem_insert, mem_singleton, true_or, or_true]
-        exact le_trans h₁ h₂
+      · rw [toRat_max, Rat.cast_max]
+        apply le_max_of_le_right
+        rw [toRat_pow, Rat.cast_pow]
+        apply pow_le_pow_left₀ hx' hx.right
+
+      · rw [toRat_max, Rat.cast_max]
+        apply le_max_of_le_left
+        rw [toRat_pow, ← Even.neg_pow hn,← Even.neg_pow hn (I.left.toRat), Rat.cast_pow]
+        apply pow_le_pow_left₀
+        · grind only
+        · simp only [Rat.cast_neg, neg_le_neg_iff, hx.left]
 
   -- I doesn't cross 0
-  · rw [mem_iff_le_endpts] at hx
-    let S : Finset Dyadic := {I.left ^ n, I.right ^ n}
-    let s := S.min' (insert_nonempty (I.left ^ n) {I.right ^ n})
-    have hs : s = min (I.left ^ n) (I.right ^ n) := by
-      unfold s S
-      apply le_antisymm
-      · apply le_min
-        · apply min'_le; simp only [mem_insert, mem_singleton, true_or]
-        · apply min'_le; simp only [mem_insert, mem_singleton, or_true]
-      · rcases le_total (I.left ^ n) (I.right ^ n) with h | h
-        · rw [min_eq_left h]
-          apply le_min'
-          simp only [mem_insert, mem_singleton, forall_eq_or_imp, le_refl, forall_eq, true_and, h]
-        · rw [min_eq_right h]
-          apply le_min'
-          simp only [mem_insert, mem_singleton, forall_eq_or_imp, forall_eq, le_refl, and_true, h]
-    let s' := S.max' (insert_nonempty (I.left ^ n) {I.right ^ n})
-    have hs' : s' = max (I.left ^ n) (I.right ^ n) := by
-      unfold s' S
-      apply le_antisymm
-      · apply Finset.max'_le
-        simp only [Finset.mem_insert, Finset.mem_singleton]
-        rintro x (rfl | rfl)
-        · exact le_max_left _ _
-        · exact le_max_right _ _
-      · apply max_le
-        · apply Finset.le_max'; simp only [mem_insert, mem_singleton, true_or]
-        · apply Finset.le_max'; simp only [mem_insert, mem_singleton, or_true]
-    change s.toRat ≤ x ^ n ∧ x ^ n ≤ s'.toRat
-    simp only [hs, hs', toRat_max, toRat_min, Rat.cast_min, Rat.cast_max, toRat_pow, Rat.cast_pow]
-    clear hs hs' S s s'
-    simp only [not_and_or, not_le] at h₀
+  · simp only [not_and_or, not_le] at h₀
     rcases h₀ with hpos | hneg
     -- 0 ≤ L ≤ x ≤ R
-    · have h₁ : (I.left.toRat : ℝ) ^ n ≤ x ^ n := by
+    · simp only [toRat_min, Rat.cast_min, toRat_max, Rat.cast_max]
+      have h₁ : ((I.left ^ n).toRat : ℝ) ≤ x ^ n := by
+        rw [toRat_pow, Rat.cast_pow]
         apply pow_le_pow_left₀ _ hx.left
         norm_cast
         rw [← toRat_zero, ← le_iff_toRat]
         grind only
-      have h₂ : x ^ n ≤ (I.right.toRat : ℝ) ^ n := by
+      have h₂ : x ^ n ≤ ((I.right ^ n).toRat : ℝ) := by
+        rw [toRat_pow, Rat.cast_pow]
         apply pow_le_pow_left₀ _ hx.right
         apply le_trans _ hx.left
         norm_cast
@@ -605,14 +540,18 @@ theorem powEven_sound (hn : n % 2 = 0) : ∀ x ∈ I, x ^ n ∈ powEven I n hn :
       · exact le_trans (min_le_left _ _) h₁
       · exact le_trans h₂ (le_max_right _ _)
     -- L ≤ x ≤ R ≤ 0
-    · have h₁ : (I.right.toRat : ℝ) ^ n ≤ x ^ n := by
+    · simp only [toRat_min, Rat.cast_min, toRat_max, Rat.cast_max]
+      have h₁ : ((I.right ^ n).toRat : ℝ) ≤ x ^ n := by
+        rw [toRat_pow, Rat.cast_pow]
         rw [← Even.neg_pow hn, ← Even.neg_pow hn x]
         apply pow_le_pow_left₀
         · norm_cast
           rw [← toRat_zero, ← toRat_neg, ← le_iff_toRat]
           grind only
-        · grind only
-      have h₂ : x ^ n ≤ (I.left.toRat : ℝ) ^ n := by
+        · rw [mem_iff_le_endpts] at hx
+          grind only
+      have h₂ : x ^ n ≤ ((I.left ^ n).toRat : ℝ) := by
+        rw [toRat_pow, Rat.cast_pow]
         rw [← Even.neg_pow hn, ← Even.neg_pow hn (I.left.toRat : ℝ)]
         apply pow_le_pow_left₀
         · rw [← neg_zero]
@@ -634,31 +573,6 @@ theorem pow_sound : ∀ x ∈ I, x ^ n ∈ (I ^ n) := by
   -- n' = 0
   · simp only [pow_zero, mem_iff_le_endpts]
     norm_cast
-  -- n' = n + 1
-  -- · rename_i n' n
-  --   simp only [Nat.succ_eq_add_one, mem_iff_le_endpts, powNonzero]
-  --   split_ifs with h₀
-  --   -- n + 1 is even and interval crosses zero
-  --   · have h_even : Even (n + 1) := Nat.even_iff.mpr h₀.left
-  --     constructor
-  --     · simp only [toRat_zero, Rat.cast_zero]
-  --       apply Even.pow_nonneg h_even
-  --     · rw [mem_iff_le_endpts] at hx
-  --       rw [toRat_max, Rat.cast_max, le_max_iff, toRat_pow, Rat.cast_pow, toRat_pow, Rat.cast_pow]
-  --       rw [← Even.pow_abs h_even, ← Even.pow_abs h_even (I.left.toRat : ℝ),
-  --           ← Even.pow_abs h_even (I.right.toRat : ℝ)]
-  --       rcases le_total |↑I.left.toRat| |↑I.right.toRat| with h_abs | h_abs'
-  --       · right
-  --         apply pow_le_pow_left₀ (abs_nonneg x)
-  --         rw [abs_le]
-  --         constructor
-  --         · sorry
-  --         · sorry
-  --       · left
-  --         sorry
-  --   -- Either n + 1 is odd or n + 1 is even but I doesn't cross 0
-  --   · rw [toRat_max, Rat.cast_max, le_max_iff, toRat_pow, Rat.cast_pow, toRat_pow, Rat.cast_pow]
-  --     sorry
   · split
     -- n + 1 is even
     · rename_i n' n hn
@@ -810,7 +724,7 @@ theorem powOdd_sharp (hn : n % 2 = 1) : ∀ z ∈ (powOdd I n hn), ∃ x ∈ I, 
   rcases h with ⟨x, hx, hx'⟩
   use x, hx, hx'
 
-theorem powEven_sharp (hn : n % 2 = 0) : ∀ z ∈ (powEven I n hn), ∃ x ∈ I, x ^ n = z := by
+theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n hn), ∃ x ∈ I, x ^ n = z := by
   intro z hz
   rw [← Nat.even_iff] at hn
   dsimp [powEven] at hz
@@ -825,14 +739,77 @@ theorem powEven_sharp (hn : n % 2 = 0) : ∀ z ∈ (powEven I n hn), ∃ x ∈ I
     apply Continuous.continuousOn
     apply continuous_pow
 
+  have h₄ : max ((I.left.toRat ^ n) : ℝ) ((I.right.toRat ^ n) : ℝ) ∈ Image := by
+    simp only [Image, Set.mem_image]
+    rcases le_total ((I.left.toRat : ℝ)^n) ((I.right.toRat : ℝ)^n) with h | h
+    · rw [max_eq_right h]
+      use I.right.toRat
+      constructor
+      · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, and_true]
+        rw [← le_iff_toRat]
+        exact I.isValid
+      · rfl
+    · rw [max_eq_left h]
+      use I.left.toRat
+      constructor
+      · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, true_and]
+        rw [← le_iff_toRat]
+        exact I.isValid
+      · rfl
+
   split_ifs at hz with hI
   -- I crosses 0
-  · simp only [mem_iff_le_endpts] at hz
-    let S : Finset Dyadic := {0, I.left ^ n, I.right ^ n}
-    sorry
+  · simp only [mem_iff_le_endpts, toRat_zero, Rat.cast_zero,
+      toRat_max, Rat.cast_max, toRat_pow, Rat.cast_pow] at hz
+
+    have h₃ : 0 ∈ Image := by
+      simp only [Image, Set.mem_image]
+      use 0
+      constructor
+      · simp only [Domain, Set.mem_Icc]
+        norm_cast
+        rw [← toRat_zero, ← le_iff_toRat, ← le_iff_toRat]
+        exact hI
+      · simp only [pow_eq_zero_iff', ne_eq, true_and]
+        exact hn'
+
+    have h : z ∈ Image := by
+      apply Set.mem_of_subset_of_mem
+      apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
+      simp only [Set.mem_Icc, hz, and_self]
+
+    rcases h with ⟨x, hx, hx'⟩
+    use x, hx, hx'
   -- I doesn't cross 0
-  · simp only [mem_iff_le_endpts] at hz
-    sorry
+  · simp only [mem_iff_le_endpts, toRat_min, Rat.cast_min,
+      toRat_max, Rat.cast_max, toRat_pow, Rat.cast_pow] at hz
+
+    have h₃ : min ((I.left.toRat ^ n) : ℝ) ((I.right.toRat ^ n) : ℝ) ∈ Image := by
+      simp only [Image, Set.mem_image]
+      rcases le_total ((I.left.toRat : ℝ)^n) ((I.right.toRat : ℝ)^n) with h | h
+      · rw [min_eq_left h]
+        use I.left.toRat
+        constructor
+        · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, true_and]
+          rw [← le_iff_toRat]
+          exact I.isValid
+        · rfl
+      · rw [min_eq_right h]
+        use I.right.toRat
+        constructor
+        · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, and_true]
+          rw [← le_iff_toRat]
+          exact I.isValid
+        · rfl
+
+    have h : z ∈ Image := by
+      apply Set.mem_of_subset_of_mem
+      apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
+      simp only [Set.mem_Icc, hz, and_self]
+
+    rcases h with ⟨x, hx, hx'⟩
+    use x, hx, hx'
+
 
 theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
   intro z hz
@@ -849,7 +826,8 @@ theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
   · split at hz
     -- (n + 1) is even
     · rename_i n' n hn
-      obtain ⟨x, hx⟩ := powEven_sharp I (n + 1) hn z hz
+      have hn' : n + 1 ≠ 0 := by grind only
+      obtain ⟨x, hx⟩ := powEven_sharp I (n + 1) hn hn' z hz
       grind only
     -- (n + 1) is odd
     · rename_i n' n hn
