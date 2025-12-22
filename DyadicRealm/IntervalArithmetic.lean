@@ -63,12 +63,14 @@ lemma neg_max'_neg (S S' : Finset Dyadic) (hS : S.Nonempty) (hS' : S'.Nonempty)
     apply min'_le
     exact hS₂
 
-lemma toRat_eq {a b : Dyadic} : a.toRat = b.toRat ↔ a = b := by
+lemma toRat_eq {a b : Dyadic} :  a = b ↔ a.toRat = b.toRat  := by
   constructor
   · intro h
     rw [le_antisymm_iff] at *
+    simp only [← le_iff_toRat, h, and_true]
+  · intro h
+    rw [le_antisymm_iff] at *
     simp only [le_iff_toRat, h, and_true]
-  · intro h; rw [h]
 
 @[simp]
 lemma toRat_max {a b : Dyadic} : (max a b).toRat = max a.toRat b.toRat := by
@@ -86,6 +88,16 @@ lemma toRat_min {a b : Dyadic} : (min a b).toRat = min a.toRat b.toRat := by
     rw [← le_iff_toRat]; exact ha
   · rw [min_eq_right hb, min_eq_right]
     rw [← le_iff_toRat]; exact hb
+
+-- instance : AddCommGroup Dyadic :=
+--   -- We tell Lean: "Dyadic is just a Group hidden inside Rat"
+--   let h_inj : Function.Injective Dyadic.toRat := by
+--     intro x y h
+--     rw [toRat_eq] -- Your theorem that toRat is injective
+--     exact h
+
+--   Function.Injective.addCommGroup Dyadic.toRat h_inj
+--     toRat_zero toRat_add toRat_neg (fun _ _ => rfl)
 
 end
 end Dyadic
@@ -110,6 +122,10 @@ theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := b
   · intro h; cases I; cases J
     simp only [mk.injEq] at *
     exact h
+
+@[simp] theorem isValid' : (I.left.toRat : ℝ) ≤ I.right.toRat := by simp only [Rat.cast_le, ← le_iff_toRat, I.isValid]
+
+@[simp] theorem isValid_toRat : I.left.toRat ≤ I.right.toRat := by simp only [← le_iff_toRat, I.isValid]
 
 def ofDyadic : DyadicInterval := ⟨a, a, le_rfl⟩
 instance : Coe Dyadic DyadicInterval := ⟨DyadicInterval.ofDyadic⟩
@@ -140,22 +156,35 @@ theorem mem_iff_mem_Icc : ∀ x : ℝ, x ∈ I ↔ x ∈ Set.Icc (I.left.toRat :
 theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
 
 @[simp] lemma left_mem : (I.left.toRat : ℝ) ∈ I := by
-  simp only [mem_iff_le_endpts, le_refl, Rat.cast_le, true_and, ← le_iff_toRat, I.isValid]
+  simp only [mem_iff_le_endpts, le_refl, true_and, I.isValid']
 
 @[simp] lemma right_mem : (I.right.toRat : ℝ) ∈ I := by
-  simp only [mem_iff_le_endpts, Rat.cast_le, le_refl, and_true, ← le_iff_toRat, I.isValid]
+  simp only [mem_iff_le_endpts, le_refl, and_true, I.isValid']
 
 @[ext] theorem ext : (I : Set ℝ) = ↑J → I = J := by
   intro h
   simp only [toSet] at h
   rw [Set.Icc_eq_Icc_iff] at h
   · norm_cast at h
-    simp only [toRat_eq] at h
+    simp only [← toRat_eq] at h
     rw [eq_iff_left_right]
     exact h
-  · norm_cast
-    rw [← le_iff_toRat]
-    exact I.isValid
+  · exact I.isValid'
+
+def subset : Prop := J.left ≤ I.left ∧ I.right ≤ J.right
+instance : HasSubset DyadicInterval := ⟨DyadicInterval.subset⟩
+
+@[simp] lemma subset_iff : I ⊆ J ↔ I.toSet ⊆ J.toSet := by
+  simp only [toSet]
+  rw [Set.Icc_subset_Icc_iff I.isValid']
+  simp only [Rat.cast_le, ← le_iff_toRat]; rfl
+
+def lt : Prop := I.right < J.left
+instance : LT DyadicInterval := ⟨DyadicInterval.lt⟩
+
+def width : Dyadic := I.right - I.left
+
+-- def magnitude : Dyadic := max (abs I.left) (abs I.right)
 
 def add : DyadicInterval :=
   let l := I.left + J.left
@@ -171,9 +200,7 @@ instance : Add DyadicInterval := ⟨DyadicInterval.add⟩
 
 def neg (I : DyadicInterval) : DyadicInterval :=
   have h : -I.right ≤ -I.left := by
-     simp only [le_iff_toRat, toRat_neg, neg_le_neg_iff]
-     rw [← le_iff_toRat]
-     exact I.isValid
+     simp only [le_iff_toRat, toRat_neg, neg_le_neg_iff, I.isValid_toRat]
   ⟨-I.right, -I.left, h⟩
 
 instance : Neg DyadicInterval := ⟨DyadicInterval.neg⟩
@@ -234,8 +261,7 @@ def powOdd (n : ℕ) (hn : n % 2 = 1) : DyadicInterval :=
   have h : I.left ^ n ≤ I.right ^ n := by
     simp only [le_iff_toRat, toRat_pow]
     rw [Odd.pow_le_pow]
-    · rw [← le_iff_toRat]
-      exact I.isValid
+    · exact I.isValid_toRat
     · rw [Nat.odd_iff]
       exact hn
   ⟨(I.left ^ n), (I.right ^ n), h⟩
@@ -269,7 +295,7 @@ def pow (I : DyadicInterval) : ℕ → DyadicInterval
 
 instance : Pow DyadicInterval Nat := ⟨DyadicInterval.powExact⟩
 
-section Multiplication2
+section M2
 open Finset
 lemma mul_left_le_left_mul (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ ↑I.left.toRat * y := by
   rw [mem_iff_le_endpts] at hy
@@ -408,7 +434,7 @@ theorem mul_one : I * 1 = I := by
   constructor
   · simp only [min'_eq_iff, mem_insert, mem_singleton, true_or, forall_eq_or_imp, le_refl, forall_eq, true_and, I.isValid]
   · simp only [max'_eq_iff, mem_insert, mem_singleton, or_true, forall_eq_or_imp, forall_eq, le_refl, and_true, I.isValid]
-end Multiplication2
+end M2
 @[simp]
 theorem one_mul : 1 * I = I := by rw [mul_comm, mul_one]
 
@@ -574,7 +600,7 @@ theorem add_sharp : ∀ z ∈ (I + J), ∃ x ∈ I, ∃ y ∈ J, x + y = z := by
     constructor
     · apply le_max_left
     · rcases max_choice (I.left.toRat : ℝ) (z - J.right.toRat) with hl | hr
-      · simp only [x', hl, Rat.cast_le, ← le_iff_toRat, I.isValid]
+      · simp only [x', hl, I.isValid']
       · simp only [x', hr]
         grind only
   let y' := z - x'
@@ -586,7 +612,7 @@ theorem add_sharp : ∀ z ∈ (I + J), ∃ x ∈ I, ∃ y ∈ J, x + y = z := by
       rcases max_choice (I.left.toRat : ℝ) (z - J.right.toRat) with hl | hr
       · simp only [x', hl]
         grind only
-      · simp only [x', hr, sub_le_sub_iff_left, Rat.cast_le, ← le_iff_toRat, J.isValid]
+      · simp only [x', hr, sub_le_sub_iff_left, J.isValid']
     · rw [sub_le_comm]
       apply le_max_right
   use x', hx', y', hy'
@@ -628,9 +654,9 @@ theorem mul_sharp : ∀ z ∈ (I * J), ∃ x ∈ I, ∃ y ∈ J, x * y = z := by
   have h₁ : IsConnected Domain := by
     apply IsConnected.prod
     · apply isConnected_Icc
-      simp only [Rat.cast_le, ← le_iff_toRat, I.isValid]
+      exact I.isValid'
     · apply isConnected_Icc
-      simp only [Rat.cast_le, ← le_iff_toRat, J.isValid]
+      exact J.isValid'
 
   have h₂ : IsConnected Image := by
     apply IsConnected.image h₁
@@ -673,7 +699,7 @@ theorem powOdd_sharp (hn : n % 2 = 1) : ∀ z ∈ (powOdd I n hn), ∃ x ∈ I, 
 
   have h₁ : IsConnected Domain := by
     apply isConnected_Icc
-    simp only [Rat.cast_le, ← le_iff_toRat, I.isValid]
+    simp only [I.isValid']
 
   have h₂ : IsConnected Image := by
     apply IsConnected.image h₁
@@ -685,7 +711,7 @@ theorem powOdd_sharp (hn : n % 2 = 1) : ∀ z ∈ (powOdd I n hn), ∃ x ∈ I, 
     use (I.left.toRat : ℝ)
     constructor
     · apply Set.left_mem_Icc.mpr
-      simp only [Rat.cast_le, ← le_iff_toRat, I.isValid]
+      simp only [I.isValid']
     · simp only
 
   have h₄ : ((I.right.toRat ^ n) : ℝ) ∈ Image := by
@@ -693,7 +719,7 @@ theorem powOdd_sharp (hn : n % 2 = 1) : ∀ z ∈ (powOdd I n hn), ∃ x ∈ I, 
     use (I.right.toRat : ℝ)
     constructor
     · apply Set.right_mem_Icc.mpr
-      simp only [Rat.cast_le, ← le_iff_toRat, I.isValid]
+      simp only [I.isValid']
     · simp only
 
   have h : z ∈ Image := by
@@ -712,7 +738,7 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
   let Image := (fun x ↦ x ^ n) '' Domain
   have h₁ : IsConnected Domain := by
     apply isConnected_Icc
-    simp only [Rat.cast_le, ← le_iff_toRat, I.isValid]
+    simp only [I.isValid']
 
   have h₂ : IsConnected Image := by
     apply IsConnected.image h₁
@@ -732,9 +758,7 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
     · rw [max_eq_left h]
       use I.left.toRat
       constructor
-      · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, true_and]
-        rw [← le_iff_toRat]
-        exact I.isValid
+      · simp only [Domain, Set.mem_Icc, le_refl, true_and, I.isValid']
       · rfl
 
   split_ifs at hz with hI
@@ -770,16 +794,12 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
       · rw [min_eq_left h]
         use I.left.toRat
         constructor
-        · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, true_and]
-          rw [← le_iff_toRat]
-          exact I.isValid
+        · simp only [Domain, Set.mem_Icc, le_refl, true_and, I.isValid']
         · rfl
       · rw [min_eq_right h]
         use I.right.toRat
         constructor
-        · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, and_true]
-          rw [← le_iff_toRat]
-          exact I.isValid
+        · simp only [Domain, Set.mem_Icc, le_refl, and_true, I.isValid']
         · rfl
 
     have h : z ∈ Image := by
@@ -859,23 +879,59 @@ theorem pow_exact : ↑(I^n) = (fun x ↦ x ^ n) '' (I : Set ℝ) := by
   · rintro _ ⟨x, hx, rfl⟩
     exact pow_sound I n x hx
 
-end Exactness
-
 @[simp]
 theorem mul_assoc' : (I * J) * K = I * (J * K) := by
-  ext z
-  simp only [mul_exact, Set.image2_mul]
-  constructor
-  · intro h
-    simp only [Set.mem_mul] at *
-    grind only
-  · intro h
-    simp only [Set.mem_mul] at *
-    grind only
+  ext z; simp only [mul_exact, image2_mul, mem_mul]; grind only
 
--- Will prove this by sharpness of multiplication later
+theorem left_subdistrib : I * (J + K) ⊆ I * J + I * K := by
+  rw [subset_iff]
+  intro z hz
+  simp only [toSet, ← mem_iff_mem_Icc] at hz
+  obtain ⟨x, hx, y, hy, rfl⟩ := mul_sharp I (J + K) z hz
+  obtain ⟨y₁, hy₁, y₂, hy₂, rfl⟩ := add_sharp J K y hy
+  rw [add_exact, image2_add, _root_.mul_add]
+  exact add_mem_add (mul_sound I J x hx y₁ hy₁) (mul_sound I K x hx y₂ hy₂)
+
+theorem right_subdistrib : (J + K) * I ⊆ J * I + K * I := by
+ rw [mul_comm (J + K) I, mul_comm J I, mul_comm K I]
+ exact left_subdistrib I J K
 
 -- Distributivity doesn't hold in either direction. Choose counterexamples
+end Exactness
+
+section inclusion_isotonicity
+open Set
+variable {A B : DyadicInterval}
+
+theorem add_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) : I + J ⊆ A + B := by
+  simp only [subset_iff, add_exact, image2_add]
+  exact add_subset_add ((subset_iff I A).mp hI) ((subset_iff J B).mp hJ)
+
+theorem neg_isotonic (hI : I ⊆ A) : -I ⊆ - A := by
+  simp only [subset_iff, neg_exact, image_neg_eq_neg, neg_subset_neg]
+  rw [← subset_iff]; exact hI
+
+theorem sub_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) : I - J ⊆ A - B := by
+  simp only [subset_iff, sub_exact, image2_sub]
+  exact sub_subset_sub ((subset_iff I A).mp hI) ((subset_iff J B).mp hJ)
+
+theorem mul_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) : I * J ⊆ A * B := by
+  simp only [subset_iff, mul_exact, image2_mul]
+  exact mul_subset_mul ((subset_iff I A).mp hI) ((subset_iff J B).mp hJ)
+
+theorem pow_isotonic (hI : I ⊆ A) : I ^ n ⊆ A ^ n := by
+  simp only [subset_iff, pow_exact]
+  apply image_mono
+  exact (subset_iff I A).mp hI
+
+end inclusion_isotonicity
 
 end
 end DyadicInterval
+
+/-
+I ⊆ J
+I ⊆ A, J ⊆ B → I op J ⊆ A op B
+I * (J + K) ⊆ I * J + I * K
+∀ x ∈ I, p(x) ∈ p(I)
+-/
