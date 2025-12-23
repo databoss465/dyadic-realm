@@ -33,7 +33,7 @@ theorem shiftRight_toRat (a : Dyadic) (i : Int) :
 
 def half (a : Dyadic) : Dyadic := a.shiftRight 1
 
-theorem half_toRat (a : Dyadic) : (half a).toRat = a.toRat/2 := by
+theorem toRat_half (a : Dyadic) : (half a).toRat = a.toRat/2 := by
   rw [half, shiftRight_toRat]; ring
 
 @[simp, grind]
@@ -187,6 +187,8 @@ theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x �
 @[simp, grind] lemma right_mem : ↑I.right.toRat ∈ I := by
   simp only [mem_iff_le_endpts, le_refl, and_true, I.isValid']
 
+theorem nonempty : Nonempty (I : Set ℝ) := ⟨↑I.left.toRat, I.left_mem⟩
+
 @[ext] theorem ext : (I : Set ℝ) = ↑J → I = J := by
   intro h
   simp only [toSet] at h
@@ -199,33 +201,89 @@ theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x �
 
 def width : Dyadic := I.right - I.left
 
-theorem width_nonneg : 0 ≤ I.width := by sorry
+theorem width_nonneg : 0 ≤ I.width := by
+  simp only [width, le_iff_toRat, toRat_sub, toRat_zero]; rw [sub_nonneg]
+  exact I.isValid_toRat
 
 def subset : Prop := J.left ≤ I.left ∧ I.right ≤ J.right
 instance : HasSubset DyadicInterval := ⟨DyadicInterval.subset⟩
 instance : HasSSubset DyadicInterval where SSubset I J := I ⊆ J ∧ I ≠ J
-
-theorem subset_width : I ⊆ J → I.width ≤ J.width := by sorry
-theorem ssubset_width : I ⊂ J → I.width < J.width := by sorry
 
 @[simp, grind] theorem subset_iff : I ⊆ J ↔ I.toSet ⊆ J.toSet := by
   simp only [toSet]
   rw [Set.Icc_subset_Icc_iff I.isValid']
   simp only [Rat.cast_le, ← le_iff_toRat]; rfl
 
-@[simp, grind] theorem subset_refl : I ⊆ I := by sorry
-@[grind] theorem subset_trans : I ⊆ J → J ⊆ K → I ⊆ K := by sorry
+@[simp, grind] theorem subset_iff_endpts : I ⊆ J ↔ J.left ≤ I.left ∧ I.right ≤ J.right := by rfl
+
+@[simp, grind] theorem ssubset_iff : I ⊂ J ↔ I ⊆ J ∧ I ≠ J := by rfl
+
+theorem subset_width : I ⊆ J → I.width ≤ J.width := by
+  grind only [subset_iff_endpts, width, le_iff_toRat]
+
+theorem subset_and_eq_width : I ⊆ J → I.width = J.width → I = J := by
+  grind only [subset_iff_endpts, width, = Set.mem_Icc, eq_iff_left_right, isValid_toRat, isValid']
+
+theorem ssubset_width : I ⊂ J → I.width < J.width := by
+  intro h
+  simp only [SSubset] at h
+  rw [lt_iff_le_and_ne]
+  constructor
+  · exact subset_width I J h.left
+  · by_contra h'
+    grind only [subset_and_eq_width]
+
+@[simp, grind] theorem subset_refl : I ⊆ I := by grind only [subset_iff, = Set.subset_def]
+@[grind] theorem subset_trans : I ⊆ J → J ⊆ K → I ⊆ K := by grind only [subset_iff, = Set.subset_def]
 
 def lt : Prop := I.right < J.left
 instance : LT DyadicInterval := ⟨DyadicInterval.lt⟩
 
+instance : Decidable (I < 0) :=
+  if h : I.right < 0 then isTrue (by change I.right < 0; exact h)
+  else isFalse (by change ¬I.right < 0; exact h)
+
+instance : Decidable (0 < I) :=
+  if h : 0 < I.left then isTrue (by change 0 < I.left; exact h)
+  else isFalse (by change ¬0 < I.left; exact h)
+
 class ZeroFree : Prop where p : (I < 0) ∨ (0 < I)
-instance : Decidable (ZeroFree I) := by sorry
+instance : Decidable (ZeroFree I) :=
+  if h : (I < 0) ∨ (0 < I) then isTrue ⟨h⟩
+  else isFalse (fun h_class => h h_class.p)
+
+@[simp, grind] theorem zerofree_iff : ZeroFree I ↔ (I < 0 ∨ 0 < I) := by
+  constructor
+  · intro h; exact h.p
+  · intro h; exact ⟨h⟩
 
 class HasZero : Prop where p : I.left ≤ 0 ∧ 0 ≤ I.right
-instance : Decidable (HasZero I) := by sorry
+instance : Decidable (HasZero I) :=
+  if h : I.left ≤ 0 ∧ 0 ≤ I.right then isTrue ⟨h⟩
+  else isFalse (fun h_class => h h_class.p)
 
-@[simp, grind] theorem haszero_iff_not_zerofree : HasZero I ↔ ¬ZeroFree I := by sorry
+@[simp, grind] theorem haszero_iff : HasZero I ↔ I.left ≤ 0 ∧ 0 ≤ I.right := by
+  constructor
+  · intro h; exact h.p
+  · intro h; exact ⟨h⟩
+
+@[simp, grind] theorem haszero_iff_not_zerofree : HasZero I ↔ ¬ZeroFree I := by
+  constructor
+  · intro h
+    rw [haszero_iff] at h
+    rw [zerofree_iff, not_or]
+    constructor
+    · change ¬I.right < 0
+      rw [not_lt]; exact h.right
+    · change ¬0<I.left
+      rw [not_lt]; exact h.left
+
+  · intro h
+    rw [zerofree_iff, not_or] at h
+    rw [haszero_iff, ← not_lt, ← not_lt]
+    constructor
+    · change ¬0 < I; exact h.right
+    · change ¬I < 0; exact h.left
 
 -- maybe we want trichotomy wrt 0 (later on)
 
@@ -233,13 +291,13 @@ def midpoint : Dyadic := half (I.left + I.right)
 -- def magnitude : Dyadic := (max (abs (I.left.toRat)) (abs (I.right.toRat))).toDyadic _
 
 @[simp, grind] theorem left_le_midpoint : I.left ≤ I.midpoint := by
-  simp only [le_iff_toRat, midpoint, half_toRat]
+  simp only [le_iff_toRat, midpoint, toRat_half]
   field_simp
   rw [mul_two, toRat_add]
   exact add_le_add (by rfl) (I.isValid_toRat)
 
 @[simp, grind] theorem midpoint_le_right : I.midpoint ≤ I.right := by
-  simp only [le_iff_toRat, midpoint, half_toRat]
+  simp only [le_iff_toRat, midpoint, toRat_half]
   field_simp
   rw [two_mul, toRat_add]
   apply add_le_add (I.isValid_toRat) (by rfl)
@@ -997,46 +1055,142 @@ def intersection : Option DyadicInterval :=
 
 infixl:70 " ⊓ " => intersection
 
-theorem inter_self : I ⊓ I = some I := by sorry
-theorem inter_comm (h : I ⊓ J = some K) : I ⊓ J = J ⊓ I := by sorry
-theorem inter_subset (h : J ⊆ I) : I ⊓ J = some J := by sorry
-theorem inter_subset_left (h : I ⊓ J = some K) : K ⊆ I := by sorry
-theorem inter_subset_right (h : I ⊓ J = some K) : K ⊆ J := by sorry
-theorem inter_optimal (X : DyadicInterval) (hI : X ⊆ I) (hJ : X ⊆ J) : ∃ K, I ⊓ J = some K ∧ X ⊆ K := by sorry
-theorem inter_toSet_some (h : I ⊓ J = some K) : (I : Set ℝ) ∩ ↑J = ↑K := by sorry
-theorem inter_toSet_none (h : I ⊓ J = none) : (I : Set ℝ) ∩ ↑J = ∅ := by sorry
+theorem inter_self : I ⊓ I = some I := by
+  simp only [intersection, max_self, min_self,
+    Option.dite_none_right_eq_some, exists_prop, and_true, I.isValid]
+
+theorem inter_comm (h : I ⊓ J = some K) : I ⊓ J = J ⊓ I := by
+  simp only [intersection, max_comm, min_comm]
+
+theorem inter_subset (h : J ⊆ I) : I ⊓ J = some J := by
+  simp only [intersection, le_inf_iff, sup_le_iff, Option.dite_none_right_eq_some,
+    Option.some.injEq, eq_iff_left_right, sup_eq_right, inf_eq_right, exists_and_left, exists_prop, I.isValid, J.isValid, and_true, true_and]
+  grind only [eq_iff_left_right, left_le_midpoint,
+    = Set.subset_def, sub_eq_neg_add, subset_refl, midpoint_le_right, mem_iff_mem_Icc, right_add_eq,
+    right_sub_eq, subset_trans, Dyadic.sub_eq_add_neg, right_mem, left_sub_eq, isValid_toRat,
+    left_mem, left_add_eq, midpoint_mem, isValid', subset_iff_endpts, cases Or]
+
+theorem inter_subset_left (h : I ⊓ J = some K) : K ⊆ I := by
+  simp only [intersection] at h
+  simp only [le_inf_iff, sup_le_iff, Option.dite_none_right_eq_some, Option.some.injEq,
+    eq_iff_left_right, exists_and_left, exists_prop, I.isValid, J.isValid, true_and, and_true] at h
+  have h₁ := h.left
+  have h₂ := h.right.left
+  have h₃ := h.right.right
+  clear h
+  rw [subset_iff_endpts, ← h₁, ← h₃]
+  simp only [le_max_left, min_le_left, and_self]
+
+theorem inter_subset_right (h : I ⊓ J = some K) : K ⊆ J := by
+  rw [inter_comm I J K h] at h
+  exact inter_subset_left J I K h
+
+theorem inter_optimal (X : DyadicInterval) (hI : X ⊆ I) (hJ : X ⊆ J) : ∃ K, I ⊓ J = some K ∧ X ⊆ K := by
+  rw [subset_iff] at *
+  have h := Set.subset_inter hI hJ
+  clear hI hJ
+  simp only [toSet, Set.Icc_inter_Icc] at h
+  rw [Set.Icc_subset_Icc_iff X.isValid'] at h
+  norm_cast at h
+  simp only [← toRat_max, ← toRat_min, ← le_iff_toRat] at h
+  have hK := le_trans h.left (le_trans X.isValid h.right)
+  use ⟨max I.left J.left, min I.right J.right, hK⟩
+  simp only [intersection, hK, Option.dite_none_right_eq_some, exists_prop,
+    subset_iff, and_self, true_and, toSet, Set.Icc_subset_Icc_iff X.isValid']
+  norm_cast
+  simp only [← le_iff_toRat, h, and_self]
+
+theorem inter_toSet_some (h : I ⊓ J = some K) : (I : Set ℝ) ∩ ↑J = ↑K := by
+  apply subset_antisymm
+  · intro z hz
+    unfold toSet at *
+    simp only [intersection, le_inf_iff, sup_le_iff, Option.dite_none_right_eq_some, Option.some.injEq,
+      eq_iff_left_right, exists_and_left, exists_prop] at h
+    simp only [Set.Icc_inter_Icc, Set.mem_Icc,
+      ← Rat.cast_max, ← toRat_max, h.left, ← Rat.cast_min, ← toRat_min, h.right.right] at hz
+    simp only [Set.mem_Icc, hz, and_true]
+  · intro z hz
+    unfold toSet at *
+    simp only [intersection, le_inf_iff, sup_le_iff, Option.dite_none_right_eq_some, Option.some.injEq,
+      eq_iff_left_right, exists_and_left, exists_prop] at h
+    simp only [Set.mem_Icc] at hz
+    simp only [Set.Icc_inter_Icc, Set.mem_Icc, ← Rat.cast_max, ← toRat_max, h.left, ← Rat.cast_min, ← toRat_min, h.right.right, hz, and_true]
+
+theorem inter_toSet_none (h : I ⊓ J = none) : (I : Set ℝ) ∩ ↑J = ∅ := by
+  simp only [intersection, dite_eq_right_iff, reduceCtorEq] at h
+  rw [Set.eq_empty_iff_forall_notMem]
+  intro x h'
+  simp only [toSet] at h'
+  simp only [Set.Icc_inter_Icc, Set.mem_Icc, ← Rat.cast_max, ← toRat_max, ← Rat.cast_min, ← toRat_min] at h'
+  have h' := le_trans h'.left h'.right
+  norm_cast at h'
+  rw [← le_iff_toRat] at h'
+  exact h h'
 
 def hull : DyadicInterval :=
   let l := min I.left J.left
   let r := max I.right J.right
-  have h : l ≤ r := by sorry
+  have h : l ≤ r := by
+    apply le_trans (min_le_left I.left J.left)
+    apply le_trans _ (le_max_left I.right J.right)
+    exact I.isValid
   ⟨l, r, h⟩
 
 infixl:65 " ⊔ " => hull
 
-theorem hull_self : I ⊔ I = I := by sorry
-theorem hull_comm : I ⊔ J = J ⊔ I := by sorry
-theorem hull_subset (h : J ⊆ I) : I ⊔ J = I := by sorry
-theorem left_subset_hull : I ⊆ I ⊔ J := by sorry
-theorem right_subset_hull : J ⊆ I ⊔ J := by sorry
-theorem hull_optimal (X : DyadicInterval) (hI : I ⊆ X) (hJ : J ⊆ X) : I ⊔ J ⊆ X := by sorry
+theorem hull_self : I ⊔ I = I := by simp only [hull, min_self, max_self]
+
+theorem hull_comm : I ⊔ J = J ⊔ I := by grind only [hull]
+
+theorem hull_subset (h : I ⊆ J) : I ⊔ J = J := by
+  simp only [subset_iff_endpts] at h
+  simp only [hull, eq_iff_left_right, inf_eq_right, sup_eq_right, h, and_self]
+
+theorem left_subset_hull : I ⊆ I ⊔ J := by
+  simp only [hull, subset_iff_endpts, min_le_left, le_max_left, and_self]
+
+theorem right_subset_hull : J ⊆ I ⊔ J := by grind only [hull_comm, left_subset_hull]
+
+theorem hull_optimal (X : DyadicInterval) (hI : I ⊆ X) (hJ : J ⊆ X) : I ⊔ J ⊆ X := by
+  simp only [hull, subset_iff_endpts] at *
+  simp only [le_min_iff, max_le_iff, hI, hJ, and_self]
 
 def split : DyadicInterval × DyadicInterval :=
   let left_half : DyadicInterval := ⟨I.left, I.midpoint, I.left_le_midpoint⟩
   let right_half : DyadicInterval := ⟨I.midpoint, I.right, I.midpoint_le_right⟩
   (left_half, right_half)
 
-theorem left_split_proper_subset : I.split.1 ⊂ I := by sorry
-theorem right_split_proper_subset : I.split.2 ⊂ I := by sorry
-theorem split_hull : I.split.1 ⊔ I.split.2 = I := by sorry
-theorem split_inter : I.split.1 ⊓ I.split.2 = some ↑I.midpoint := by sorry
-theorem mem_split_iff : ∀ x ∈ I, x ∈ I.split.1 ∨ x ∈ I.split.2 := by sorry
-theorem split_width : I.split.1.width = half I.width := by sorry
-theorem split_width_right : I.split.2.width = half I.width := by sorry
+theorem left_split_subset : I.split.1 ⊆ I := by
+  simp only [split, subset_iff_endpts, le_refl, midpoint_le_right, and_self]
+
+theorem right_split_subset : I.split.2 ⊆ I := by
+  simp only [split, subset_iff_endpts, le_refl, left_le_midpoint, and_self]
+
+theorem split_hull : I.split.1 ⊔ I.split.2 = I := by
+  simp only [split, hull, eq_iff_left_right]
+  exact ⟨min_eq_left I.left_le_midpoint, max_eq_right I.midpoint_le_right⟩
+
+theorem split_inter : I.split.1 ⊓ I.split.2 = some ↑I.midpoint := by
+  simp only [intersection, split, left_le_midpoint, sup_of_le_right, midpoint_le_right,
+    inf_of_le_left, le_refl, ↓reduceDIte, ofDyadic]
+
+theorem mem_split_iff : ∀ x ∈ I, x ∈ I.split.1 ∨ x ∈ I.split.2 := by
+  intro x hx
+  simp only [mem_iff_le_endpts] at *
+  rcases le_total x ↑I.midpoint.toRat with h₁ | h₂
+  · left; simp only [split]; exact ⟨hx.left, h₁⟩
+  · right; simp only [split];  exact ⟨h₂, hx.right⟩
+
+theorem split_width : I.split.1.width = half I.width := by
+  simp only [split, width, midpoint, toRat_eq, toRat_sub, toRat_half, toRat_add]
+  linarith
+
+theorem split_width_right : I.split.2.width = half I.width := by
+  simp only [split, width, midpoint, toRat_eq, toRat_sub, toRat_half, toRat_add]
+  linarith
 
 end
 end DyadicInterval
-
 
 /-
 I ⊆ J
