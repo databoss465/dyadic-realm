@@ -182,6 +182,10 @@ instance : IntCast DyadicInterval :=
 
 @[simp, grind] lemma right_coe_zero : (0 : DyadicInterval).right = 0 := by rfl
 
+@[simp, grind] lemma left_coe : (a : DyadicInterval).left = a := by rfl
+
+@[simp, grind] lemma right_coe : (a : DyadicInterval).right = a := by rfl
+
 def toSet : Set ℝ := Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ)
 instance : Coe DyadicInterval (Set ℝ) := ⟨toSet⟩
 
@@ -356,10 +360,10 @@ instance : Sub DyadicInterval where sub := DyadicInterval.sub
 
 @[simp, grind] lemma sub_eq_neg_add : I - J = I + (-J) := by rfl
 
-@[simp, grind] lemma left_sub_eq : (I - J).left = I.left - J.right := by
+@[simp, grind] lemma left_sub : (I - J).left = I.left - J.right := by
   simp only [sub_eq_neg_add, left_add_eq, neg_left, Dyadic.sub_eq_add_neg]
 
-@[simp, grind] lemma right_sub_eq : (I - J).right = I.right - J.left := by
+@[simp, grind] lemma right_sub : (I - J).right = I.right - J.left := by
   simp only [sub_eq_neg_add, right_add_eq, neg_right, Dyadic.sub_eq_add_neg]
 
 section Multiplication
@@ -605,11 +609,11 @@ theorem neg_sound : ∀ x ∈ I, -x ∈ -I := by
 theorem sub_sound : ∀ x ∈ I, ∀ y ∈ J, x - y ∈ (I - J) := by
   intro x hx y hy
   constructor
-  · rw [left_sub_eq, toRat_sub, Rat.cast_sub]
+  · rw [left_sub, toRat_sub, Rat.cast_sub]
     apply sub_le_sub
     · exact hx.left
     · exact hy.right
-  · rw [right_sub_eq, toRat_sub, Rat.cast_sub]
+  · rw [right_sub, toRat_sub, Rat.cast_sub]
     apply sub_le_sub
     · exact hx.right
     · exact hy.left
@@ -1088,7 +1092,7 @@ theorem inter_subset (h : J ⊆ I) : I ⊓ J = some J := by
     Option.some.injEq, eq_iff_left_right, sup_eq_right, inf_eq_right, exists_and_left, exists_prop, I.isValid, J.isValid, and_true, true_and]
   grind only [eq_iff_left_right, left_le_midpoint,
     = Set.subset_def, sub_eq_neg_add, subset_refl, midpoint_le_right, mem_iff_mem_Icc, right_add_eq,
-    right_sub_eq, subset_trans, Dyadic.sub_eq_add_neg, right_mem, left_sub_eq, isValid_toRat,
+    right_sub, subset_trans, Dyadic.sub_eq_add_neg, right_mem, left_sub, isValid_toRat,
     left_mem, left_add_eq, midpoint_mem, isValid', subset_iff_endpts, cases Or]
 
 theorem inter_subset_left (h : I ⊓ J = some K) : K ⊆ I := by
