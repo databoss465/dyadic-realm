@@ -9,7 +9,7 @@ set_option linter.style.longLine false
 This file defines addition, subtraction, multiplication, and exponentiation on dyadic intervals,
 and proves their basic properties.
 
-# Main Results
+## Main Results
 - Addition and Multiplication are commutative and associative.
 - Subdistributive laws for multiplication over addition.
 - `Soundness` : If x ∈ I and y ∈ J, then x ∘ y ∈ I ∘ J for ∘ ∈ {+, -, *}, similarly for exponentiation.
@@ -18,6 +18,9 @@ and proves their basic properties.
 - `Exactness` : The set of all x ∘ y for x ∈ I and y ∈ J is exactly the interval I ∘ J for ∘ ∈ {+, -, *},
   similarly for exponentiation.
 - `Isotonicity` : If I ⊆ A and J ⊆ B, then I ∘ J ⊆ A ∘ B for ∘ ∈ {+, -, *}, similarly for exponentiation.
+
+## TODO
+- Division
 -/
 namespace DyadicInterval
 section Addition

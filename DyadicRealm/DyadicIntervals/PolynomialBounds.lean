@@ -11,6 +11,19 @@ set_option linter.unusedVariables false
 # Polynomial Bounds over Dyadic Intervals
 This file defines polynomials with rational coefficients represented as fixed-length vectors,
 and provides functions to evaluate these polynomials over dyadic intervals with guaranteed soundness.
+
+## Main Definitions
+- `RatPol n` : Type alias for `Vector ℚ n`, representing polynomials of degree ≤ n-1.
+- `toPoly` : Converts a `RatPol n` to a `Polynomial ℚ`.
+- `toRealPoly` : Converts a `RatPol n` to a `Polynomial ℝ`.
+- `deriv` : Computes the derivative of a `RatPol n`.
+
+- `evalWithPrec` : Evaluates a `RatPol n` at a rational point, returning a `DyadicInterval` at specified precision.
+- `intervalEvalWithPrec` : Evaluates a `RatPol n` over a `DyadicInterval`; precision is specified for handling the conversion of rationals to dyadic intervals.
+
+## Main Theorems
+- `eval_sound` : Ensures that the evaluation of `toRealPoly` at a rational point lies within the computed dyadic interval.
+- `interval_eval_sound` : Ensures that the evaluation of `toRealPoly` over a dyadic interval lies within the computed dyadic interval.
 -/
 
 namespace DyadicInterval

@@ -11,16 +11,16 @@ Constructs non-empty dyadic intervals from its endpoints.
 
 ## Main Definitions
 
-* `DyadicInterval`: A structure wrapping two Dyadic numbers `left`, `right` and `left ≤ right`.
-* `midpoint`: The arithmetic mean of the endpoints.
-* `width`: The length of the interval ($right - left$).
-* `ofRatWithPrec`: Approximates a rational number into a `DyadicInterval` with a given precision.
-* `toSet` : coerces a `DyadicInterval` to the corresponding `Set ℝ`
-* `HasZero`: A decidable predicate indicating the interval contains 0.
-* `ZeroFree`: A decidable predicate indicating the interval strictly excludes 0 (useful for division safety).
-* `intersection` : Intersection of `DyadicInterval` as `Option DyadicInterval`
-* `hull` : The hull of two interval
-* `split` : Splits an interval at the midpoint
+- `DyadicInterval`: A structure wrapping two Dyadic numbers `left`, `right` and `left ≤ right`.
+- `ofRatWithPrec`: Approximates a rational number into a `DyadicInterval` with a given precision.
+- `toSet` : coerces a `DyadicInterval` to the corresponding `Set ℝ`
+- `width`: The length of the interval ($right - left$).
+- `HasZero`: A decidable predicate indicating the interval contains 0.
+- `ZeroFree`: A decidable predicate indicating the interval strictly excludes 0 (useful for division safety).
+- `midpoint`: The arithmetic mean of the endpoints.
+- `intersection` : Intersection of `DyadicInterval` as `Option DyadicInterval`
+- `hull` : The hull of two interval
+- `split` : Splits an interval at the midpoint
 
 -/
 
@@ -200,8 +200,8 @@ def ofRatWithPrec (prec : ℤ) (x : ℚ) : DyadicInterval :=
 def toSet : Set ℝ := Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ)
 instance : Coe DyadicInterval (Set ℝ) := ⟨toSet⟩
 
-def Mem (x : ℝ) : Prop := x ∈ (I : Set ℝ)
-instance : Membership ℝ DyadicInterval where mem := DyadicInterval.Mem
+def mem (x : ℝ) : Prop := x ∈ (I : Set ℝ)
+instance : Membership ℝ DyadicInterval where mem := DyadicInterval.mem
 
 @[simp, grind]
 theorem mem_iff_mem_Icc : ∀ x : ℝ, x ∈ I ↔ x ∈ Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ) := by
