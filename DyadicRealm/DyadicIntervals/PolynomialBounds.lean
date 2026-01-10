@@ -70,7 +70,9 @@ lemma to_real_poly_coeff {n : ℕ} (p : RatPol n) (k : ℕ) :
 /-- Find the first non-zero coefficient of the rational polynomial (excluding constant term) -/
 def firstNonzeroCoeff {n : ℕ} (p : RatPol n) := p.tail.toList.find? (fun x ↦ x ≠ 0)
 
-/-- Find the index of the first non-zero coefficient of the rational polynomial (excluding constant term) -/
+/-- Find the index of the first non-zero coefficient of the rational polynomial (excluding constant term)
+This returns the index in tail, so for actual index, use `firstNonzeroIdx + 1`
+-/
 def firstNonzeroIdx {n : ℕ} (p : RatPol n) := p.tail.toList.findIdx? (fun x ↦ x ≠ 0)
 
 /-- The index of the first non-zero coefficient is less than the degree -/
@@ -378,15 +380,16 @@ def intervalEvalWithPrec {n : ℕ} (prec : ℤ) (p : RatPol n) (I : DyadicInterv
   match n with
   | 0 => 0
   | m + 1 =>
+    -- Count non-zero coefficients
     match p.tail.countP (· ≠ 0) with
     | 0 => ofRatWithPrec prec p.head -- Constant Polynomial
-    | 1 => -- Constant + Monomial
+    | 1 => -- Constant + Monomial : c + a * I ^ (k+1)
       let a := firstNonzeroCoeff p
       let k := firstNonzeroIdx p
       match a, k with
       | some a, some k =>  ofRatWithPrec prec p.head + (ofRatWithPrec prec a) * I ^ (k + 1)
       | _, _ => 0 -- Unreachable
-    | _ => --Centered form
+    | _ => --Centered form : p(m) + p'(I) * (I - c)
       (evalWithPrec prec p I.midpoint.toRat) + (intervalEvalWithPrec prec (deriv p) I) * (I - I.midpoint)
     -- p(m) + p'(I) * (I - c)
 

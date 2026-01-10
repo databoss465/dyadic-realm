@@ -224,8 +224,7 @@ def productEndpts : Finset Dyadic :=
   (I.right * J.right)}
 
 @[simp, grind] lemma product_endpts_nonempty : (productEndpts I J).Nonempty := by
-  unfold productEndpts
-  exact insert_nonempty (I.left * J.left) {I.left * J.right, I.right * J.left, I.right * J.right}
+  grind only [productEndpts, insert_nonempty]
 
 @[simp, grind] lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
   simp only [productEndpts, Dyadic.mul_comm]
@@ -252,7 +251,6 @@ instance : Mul DyadicInterval := ⟨DyadicInterval.mul⟩
   simp only [mul_right_endpt, max'_mem]
 
 lemma mul_left_le_left_mul' (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ ↑I.left.toRat * y := by
-  rw [mem_iff_le_endpts] at hy
   rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.left.toRat * J.left.toRat := by
       norm_cast
@@ -268,7 +266,6 @@ lemma mul_left_le_left_mul' (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤
     apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr)
 
 lemma mul_left_le_right_mul' (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ ↑I.right.toRat * y := by
-  rw [mem_iff_le_endpts] at hy
   rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.right.toRat * J.left.toRat := by
       norm_cast
@@ -284,7 +281,6 @@ lemma mul_left_le_right_mul' (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat �
     apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr)
 
 lemma left_mul_le_mul_right' (y : ℝ) (hy : y ∈ J) : ↑I.left.toRat * y ≤ ↑(I * J).right.toRat := by
-  rw [mem_iff_le_endpts] at hy
   rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
   · have h₁ : I.left.toRat * J.right.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
@@ -300,7 +296,6 @@ lemma left_mul_le_mul_right' (y : ℝ) (hy : y ∈ J) : ↑I.left.toRat * y ≤ 
     exact le_trans (mul_le_mul_of_nonpos_left hy.left hr) h₁
 
 lemma right_mul_le_mul_right' (y : ℝ) (hy : y ∈ J) : ↑I.right.toRat * y ≤ ↑(I * J).right.toRat := by
-  rw [mem_iff_le_endpts] at hy
   rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
   · have h₁ : I.right.toRat * J.right.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
@@ -780,12 +775,4 @@ theorem pow_isotonic (hI : I ⊆ A) : I ^ n ⊆ A ^ n := by
   exact (subset_iff I A).mp hI
 
 end NatPower
-
-section Division
-open Dyadic DyadicInterval Set
-variable (I J K : DyadicInterval){A B : DyadicInterval}(a : Dyadic)(n : ℕ)
-
--- TODO --
-
-end Division
 end DyadicInterval
