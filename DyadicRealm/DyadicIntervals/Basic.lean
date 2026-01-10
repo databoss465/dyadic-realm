@@ -133,6 +133,24 @@ lemma toRat_min {a b : Dyadic} : (min a b).toRat = min a.toRat b.toRat := by
 end DyadicAddendum
 end Dyadic
 
+namespace Rat
+section RatAddendum
+open Rat Dyadic
+
+@[simp, grind] lemma toDyadic_mono {x y : ℚ} {prec : ℤ} (h : x ≤ y) :
+  x.toDyadic prec ≤ y.toDyadic prec := by
+  simp only [le_iff_toRat, toRat_toDyadic]
+  apply div_le_div_of_nonneg_right
+  · norm_cast; apply floor_monotone
+    rw [mul_le_mul_iff_left₀]
+    · exact h
+    · positivity
+  · positivity
+
+
+end RatAddendum
+end Rat
+
 -- Define Dyadic Intervals as left and right endpoints with a proof that left ≤ right
 structure DyadicInterval where
   left : Dyadic
@@ -239,12 +257,14 @@ theorem nonempty : Nonempty (I : Set ℝ) := ⟨↑I.left.toRat, I.left_mem⟩
 
 def width : Dyadic := I.right - I.left
 
-theorem width_nonneg : 0 ≤ I.width := by
+@[simp, grind] theorem width_nonneg : 0 ≤ I.width := by
   simp only [width, le_iff_toRat, toRat_sub, toRat_zero]; rw [sub_nonneg]
   exact I.isValid_toRat
 
 def lt : Prop := I.right < J.left
 instance : LT DyadicInterval := ⟨DyadicInterval.lt⟩
+
+@[simp, grind] theorem lt_iff : I < J ↔ I.right < J.left := by rfl
 
 instance : Decidable (I < 0) :=
   if h : I.right < 0 then isTrue (by change I.right < 0; exact h)
@@ -253,6 +273,20 @@ instance : Decidable (I < 0) :=
 instance : Decidable (0 < I) :=
   if h : 0 < I.left then isTrue (by change 0 < I.left; exact h)
   else isFalse (by change ¬0 < I.left; exact h)
+
+@[simp, grind] theorem pos_of_mem_pos (hI : 0 < I) : ∀ y ∈ I, 0 < y := by
+  intro y hy
+  simp only [lt_iff, right_coe_zero] at hI
+  rw [lt_iff_toRat, toRat_zero] at hI
+  simp only [mem_iff_le_endpts] at hy
+  apply LE.le.trans_lt' hy.left; norm_cast
+
+@[simp, grind] theorem neg_of_mem_neg (hI : I < 0) : ∀ y ∈ I, y < 0 := by
+  intro y hy
+  simp only [lt_iff, left_coe_zero] at hI
+  rw [lt_iff_toRat, toRat_zero] at hI
+  simp only [mem_iff_le_endpts] at hy
+  apply LE.le.trans_lt hy.right; norm_cast
 
 class ZeroFree : Prop where p : (I < 0) ∨ (0 < I)
 instance : Decidable (ZeroFree I) :=
@@ -298,6 +332,14 @@ instance : Decidable (HasZero I) :=
     · change ¬0 < I; exact h.right
     · change ¬I < 0; exact h.left
 
+@[simp, grind] theorem zerofree_iff_not_haszero : ZeroFree I ↔ ¬HasZero I := by
+  grind only [haszero_iff_not_zerofree]
+
+@[simp, grind] theorem haszero_or_zerofree : HasZero I ∨ ZeroFree I := by
+  by_cases h : HasZero I
+  · left; exact h
+  · right; rw [zerofree_iff_not_haszero]; exact h
+
 @[simp, grind] theorem zerofree_iff_not_mem_zero : ZeroFree I ↔ 0 ∉ I := by
   rw [← (haszero_iff_not_zerofree I).not_left, haszero_iff_mem_zero]
 
@@ -335,10 +377,18 @@ instance : HasSSubset DyadicInterval where SSubset I J := I ⊆ J ∧ I ≠ J
 
 @[simp, grind] theorem subset_iff : I ⊆ J ↔ I.toSet ⊆ J.toSet := by
   simp only [toSet]
-  rw [Set.Icc_subset_Icc_iff I.isValid']
+  rw [Icc_subset_Icc_iff I.isValid']
   simp only [Rat.cast_le, ← le_iff_toRat]; rfl
 
 @[simp, grind] theorem subset_iff_endpts : I ⊆ J ↔ J.left ≤ I.left ∧ I.right ≤ J.right := by rfl
+
+@[simp, grind] theorem haszero_of_subset (h : J ⊆ I) : HasZero J → HasZero I := by
+  simp only [haszero_iff_mem_zero]; intro hJ
+  exact mem_of_subset_of_mem ((subset_iff J I).mp h) hJ
+
+@[simp, grind] theorem zerofree_of_subset (h : J ⊆ I) : ZeroFree I → ZeroFree J := by
+  simp only [zerofree_iff_not_mem_zero]; intro hI
+  apply notMem_subset ((subset_iff J I).mp h) hI
 
 @[simp, grind] theorem ssubset_iff : I ⊂ J ↔ I ⊆ J ∧ I ≠ J := by rfl
 
