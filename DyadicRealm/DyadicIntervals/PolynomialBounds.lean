@@ -432,6 +432,14 @@ theorem interval_eval_sound (prec : ℤ) {n : ℕ} (p : RatPol n) (I : DyadicInt
           · simp only [ofDyadic, mem_iff_le_endpts, le_refl, and_self]
       · apply eval_sound
 
+theorem interval_eval_sound' (prec : ℤ) {n : ℕ} (p : RatPol n) (I : DyadicInterval) :
+  (toRealPoly p).eval '' I.toSet ⊆ intervalEvalWithPrec prec p I := by
+    intro x hx
+    simp only [Set.mem_image] at hx
+    obtain ⟨y, hy, hy'⟩ := hx
+    rw [← hy']
+    apply interval_eval_sound; exact hy
+
 
 
 end DyadicInterval

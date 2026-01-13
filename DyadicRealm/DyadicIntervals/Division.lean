@@ -7,6 +7,19 @@ set_option linter.style.commandStart false
 set_option linter.style.longLine false
 set_option linter.unusedSectionVars false
 
+/-!
+# Division of Dyadic Intervals
+Division by a dyadic interval is implemented as `divWithPrec` which takes a precision parameter. It computes the four possible quotient endpoints as rationals, then rounds down the minimum and rounds up the maximum to form a dyadic interval that contains all possible quotients.
+
+## Main Definitions
+- `quotientEndpoints I J` : The set of four possible rational endpoints when dividing interval `I` by interval `J`.
+- `divWithPrec prec I J` : The dyadic interval that contains all possible quotients of elements from `I` divided by elements from `J`, computed with the specified precision.
+
+## Main Theorems
+
+- `div_sound` : For any `x ∈ I` and `y ∈ J`, the quotient `x / y` lies within the interval `divWithPrec prec I J`.
+- `div_isotonic` : If `I ⊆ A` and `J ⊆ B`, then `divWithPrec prec I J ⊆ divWithPrec prec A B`.
+-/
 
 section Division
 open Dyadic DyadicInterval Finset
@@ -457,12 +470,6 @@ theorem div_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) :
 end Division
 
 open DyadicInterval
-#eval 1/(0 : ℚ)
-def I : DyadicInterval := ⟨(((3 : ℚ)/7).toDyadic 5), (((5 : ℚ)/7).toDyadic 5), by sorry⟩
-def J : DyadicInterval := ⟨(((2 : ℚ)/3).toDyadic 6), (((7 : ℚ)/9).toDyadic 6), by sorry⟩
-#eval! I
-#eval! J
-#eval! divWithPrec 6 I J
 def A : DyadicInterval := ⟨(4 : ℚ).toDyadic 1, (5 : ℚ).toDyadic 1, by rfl⟩
 def B : DyadicInterval := ⟨(1 : ℚ).toDyadic 1, (1 : ℚ).toDyadic 1, by rfl⟩
 #check neg_neg (2 : ℝ)
