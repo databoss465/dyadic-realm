@@ -234,6 +234,9 @@ theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x �
 @[simp, grind] lemma right_mem : ↑I.right.toRat ∈ I := by
   simp only [mem_iff_le_endpts, le_refl, and_true, I.isValid']
 
+theorem to_rat_mem_of_dyadic (x: Dyadic) : (x.toRat : ℝ) ∈ (x : DyadicInterval) := by
+  simp only [mem_iff_le_endpts, left_coe, le_refl, right_coe, and_self]
+
 theorem rat_mem_of_rat (x: ℚ) (prec : ℤ) : (x : ℝ) ∈ ofRatWithPrec prec x := by
   simp only [mem_iff_le_endpts, ofRatWithPrec]
   norm_cast
@@ -342,6 +345,13 @@ instance : Decidable (HasZero I) :=
 
 @[simp, grind] theorem zerofree_iff_not_mem_zero : ZeroFree I ↔ 0 ∉ I := by
   rw [← (haszero_iff_not_zerofree I).not_left, haszero_iff_mem_zero]
+
+@[simp, grind] theorem mem_zerofree_neq_zero : ZeroFree I → ∀ x ∈ I, x ≠ 0 := by
+  grind only [zerofree_iff_not_mem_zero]
+
+@[simp, grind] lemma neg_zerofree : I < 0 → I.ZeroFree := by grind only [ZeroFree]
+@[simp, grind] lemma pos_zerofree : 0 < I → I.ZeroFree := by grind only [ZeroFree]
+
 
 -- maybe we want trichotomy wrt 0 (later on)
 -- ∀ I : DyadicInterval, 0 ∈ I ∨ (0 < I ∨ I < 0)
