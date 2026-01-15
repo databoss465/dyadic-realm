@@ -9,6 +9,38 @@ set_option linter.style.commandStart false
 set_option linter.style.longLine false
 set_option linter.unusedVariables false
 
+/-!
+# Polynomial Roots and Dyadic Intervals
+This file defines properties related to the roots of rational polynomials within dyadic intervals,
+as well as the Newton method for finding such roots.
+
+## Main Definitions
+- `HasRoot`: A dyadic interval `I` has a root of a polynomial `p` if there exists a point in `I`
+  where the polynomial evaluates to zero.
+- `HasNoRoot`: A dyadic interval `I` has no root of a polynomial `p` if the polynomial does not evaluate to zero
+  at any point in `I`.
+- `HasUniqueRoot`: A dyadic interval `I` has a unique root of a polynomial `p` if there exists exactly one point in `I` where the polynomial evaluates to zero.
+- `LeftEval`/`RightEval`: The evaluations (as DyadicIntervals) of the polynomial `p` at the left and right endpoints (dyadyic) of the interval `I`.
+- `LeftEval'`/`MidEval'`/`RightEval'`: The evaluations (as real numbers) of the real polynomial corresponding to `p` at the left, midpoint, and right endpoints (reals) of the interval `I`.
+- `Newton`: The Newton iteration step, `N(I) = I.m - p(m)/p'(I)`.
+- `IsolateRoots`: Bisection algorithm to isolate the roots of a polynomial within dyadic intervals. Returns a pair of lists of dyadic intervals; first list contains all subintervals with unique roots, second list contains subintervals where root existence is unknown.
+
+
+## Main Theorems
+- `no_root_of_eval_zerofree`: If the evaluation of the polynomial is zero-free, then the interval has no root.
+- `haszero_of_eval`: If the interval has a root, then the evaluation of the polynomial has zero
+- `strict_mono_of_pos_deriv`: If the derivative of the polynomial is positive over the interval, then the polynomial is strictly monotonic on that interval.
+- `strict_anti_of_neg_deriv`: If the derivative of the polynomial is negative over the interval, then the polynomial is strictly antitonic on that interval.
+- `eval_endpts_of_has_root`: If the `LeftEval` and `RightEval` have opposite signs, then the interval has a root.
+- `eval_endpts_of_has_unique_root`: If the `LeftEval` and `RightEval` have opposite signs and the polynomial is strictly monotonic or antitonic, then the interval has a unique root.
+- `eval_endpts_of_has_no_root`: If the `LeftEval` and `RightEval` have the same sign and the polynomial is strictly monotonic or antitonic, then the interval has no root.
+- `newton_subset_of_has_root`: If an interval has a root and the derivative is zero-free, then `N(I)` contains the root.
+- `newton_subset_of_has_unique_root`: If `N(I) ⊆ I` and the derivative is zero-free, then `I` has a unique root.
+- `newton_disjoint_of_has_no_root`: If `N(I)` is disjoint from `I` and the derivative is zero-free, then `I` has no root.
+- `isolate_roots_empty_of_has_no_roots`: If `IsolateRoots` returns empty lists, then the interval has no root.
+- `isolate_roots_of_has_unique_root`: All intervals in the first list of `IsolateRoots` have unique roots.
+-/
+
 namespace DyadicInterval
 section PolynomialRoots
 open Dyadic DyadicInterval Polynomial Set
@@ -79,16 +111,18 @@ theorem strict_anti_of_neg_deriv (h : intervalEvalWithPrec prec (deriv p) I < 0)
 
 abbrev StrictMonoOrStrictAnti := StrictAntiOn (toRealPoly p).eval I ∨ StrictMonoOn (toRealPoly p).eval I
 
+/-- Polynomial evaluation is strictly monotonic or strictly antitonic on the interval if its derivative is zero-free -/
 theorem strict_mono_of_deriv_zerofree (h : ZeroFree (intervalEvalWithPrec prec (deriv p) I)) :
    I.StrictMonoOrStrictAnti p:= by
    grind only [ZeroFree, strict_anti_of_neg_deriv, strict_mono_of_pos_deriv]
 
+/-- Polynomial evaluation is injective on the interval if its derivative is zero-free there -/
 theorem injOn_of_deriv_zerofree (h : ZeroFree (intervalEvalWithPrec prec (deriv p) I)) :
   (I.toSet).InjOn (fun x ↦ eval x (toRealPoly p)) :=
   have h' := strict_mono_of_deriv_zerofree _ _ _ h
   h'.elim StrictAntiOn.injOn StrictMonoOn.injOn
 
--- Move all of this stuff out of here; preferably into "RationalPolynomials.Basic" -- pending refactor
+-- Move all of this stuff out of here; preferably into "RationalPolynomials.Basic" -- pending refactor?
 -- p (I.left) * p (I.right)   (essentially)
 abbrev LeftEval := (evalWithPrec prec p I.left.toRat)
 abbrev RightEval := (evalWithPrec prec p I.right.toRat)
@@ -96,6 +130,7 @@ noncomputable abbrev LeftEval' := (toRealPoly p).eval ↑I.left.toRat
 noncomputable abbrev RightEval' := (toRealPoly p).eval ↑I.right.toRat
 noncomputable abbrev MidEval' := (toRealPoly p).eval ↑I.midpoint.toRat
 
+/-- If the derivative is positive, p(left) ≤ p(midpoint) ≤ p(right) -/
 theorem increasing_of_pos_deriv (h : 0 < intervalEvalWithPrec prec (deriv p) I) :
   I.LeftEval' p ≤ I.MidEval' p ∧ I.MidEval' p ≤ I.RightEval' p := by
   apply strict_mono_of_pos_deriv at h
@@ -104,6 +139,7 @@ theorem increasing_of_pos_deriv (h : 0 < intervalEvalWithPrec prec (deriv p) I) 
   have h₂ := h I.midpoint_mem I.right_mem (I.midpoint_mem).right
   exact ⟨h₁, h₂⟩
 
+/-- If the derivative is negative, p(right) ≤ p(midpoint) ≤ p(left) -/
 theorem decreasing_of_neg_deriv (h : intervalEvalWithPrec prec (deriv p) I < 0) :
   I.RightEval' p ≤ I.MidEval' p ∧ I.MidEval' p ≤ I.LeftEval' p := by
   apply strict_anti_of_neg_deriv at h
@@ -286,4 +322,114 @@ theorem newton_disjoint_of_has_no_root (h : ZeroFree (intervalEvalWithPrec prec 
   grind only
 
 end NewtonMethod
+
+section IsolationAlgorithms
+open Dyadic DyadicInterval Polynomial Set
+
+-- def IsolateRoots_ivt (I : DyadicInterval) {n : ℕ} (p : RatPol n)
+--   (prec : ℤ)(max_depth : ℕ) (min_width: Dyadic) : List DyadicInterval × List DyadicInterval :=
+--   if ZeroFree (intervalEvalWithPrec prec p I) then ([], []) -- I.HasNoRoot p
+--   else if ZeroFree (intervalEvalWithPrec prec (deriv p) I) then
+--     let endpts := (I.LeftEval prec p) * (I.RightEval prec p)
+--     if endpts < 0 then ([I], []) else ([], [])
+--   else
+--   sorry
+
+/-- Merges the results of two IsolateRoots calls -/
+def merge_results (L R : List DyadicInterval × List DyadicInterval) : List DyadicInterval × List DyadicInterval :=
+  (L.1 ++ R.1, L.2 ++ R.2)
+
+def IsolateRoots (I : DyadicInterval) {n : ℕ} (p : RatPol n)
+  (prec : ℤ)(max_depth : ℕ) (min_width: Dyadic) : List DyadicInterval × List DyadicInterval :=
+  if ZeroFree (intervalEvalWithPrec prec p I) then ([], []) -- I.HasNoRoot p
+  else if ZeroFree (intervalEvalWithPrec prec (deriv p) I) then
+    let N := I.Newton prec p
+    match I ⊓ N with
+    | none => ([], []) -- I.HasNoRoot p
+    | some J => if N ⊆ I then ([I], []) -- I.HasUniqueRoot p
+        else if J.width ≤ min_width then ([], [J]) -- Unknown : I ∩ N(I) is too narrow
+        else if max_depth = 0 then ([], [I]) -- Unknown : Max Recursion Depth reached
+        else IsolateRoots J p prec (max_depth - 1) min_width
+    else if max_depth = 0 then ([], [I]) -- Unknown : Max Recursion Depth reached
+    else let (L, R) := I.split
+    let result_left := IsolateRoots L p prec (max_depth - 1) min_width
+    let result_right := IsolateRoots R p prec (max_depth - 1) min_width
+    merge_results result_left result_right
+
+theorem isolate_roots_empty_of_has_no_roots (I : DyadicInterval) {n : ℕ} (p : RatPol n) (prec : ℤ) (max_depth : ℕ)
+  (min_width: Dyadic) (h : IsolateRoots I p prec max_depth min_width = ([], [])) : I.HasNoRoot p := by
+  unfold IsolateRoots at h
+  split_ifs at h with hzf hderiv hmax hmax
+  · grind only [no_root_of_eval_zerofree]
+  · simp only at h; split at h
+    · grind only [newton_disjoint_of_has_no_root]
+    · exfalso; grind only
+  · simp only at h; split at h
+    · grind only [newton_disjoint_of_has_no_root]
+    · split_ifs at h
+      · exfalso; grind only
+      · exfalso; grind only
+      · rename_i J hJ hI _ ; by_contra hI'
+        have := inter_toSet_some _ _ _ hJ
+        rw [hasNoRoot_iff_not_hasRoot, not_not] at hI'
+        obtain ⟨x, hx, hx'⟩ := hI'
+
+        have hJ' : J.HasRoot p := by
+          unfold HasRoot; use x; constructor
+          · simp only [Membership.mem, mem, ← this]
+            apply mem_inter hx
+            exact has_root_of_newton_has_root _ _ _ hderiv hx hx'
+          · exact hx'
+
+        have hN : J.HasNoRoot p := by
+          apply isolate_roots_empty_of_has_no_roots; exact h
+
+        grind only [hasNoRoot_iff_not_hasRoot]
+  · exfalso; grind only
+  · simp only [merge_results, Prod.mk.injEq, List.append_eq_nil_iff] at h
+    have h₁ : I.split.1.IsolateRoots p prec (max_depth - 1) min_width = ([], []) := by grind only
+    have h₂ : I.split.2.IsolateRoots p prec (max_depth - 1) min_width = ([], []) := by grind only
+    have h₁ : I.split.1.HasNoRoot p := by apply isolate_roots_empty_of_has_no_roots; exact h₁
+    have h₂ : I.split.2.HasNoRoot p := by apply isolate_roots_empty_of_has_no_roots; exact h₂
+    unfold HasNoRoot at *; intro x hx
+    grind only [mem_split_iff]
+
+theorem isolate_roots_of_has_unique_root (I : DyadicInterval) {n : ℕ} (p : RatPol n) (prec : ℤ) (max_depth : ℕ)
+  (min_width: Dyadic) : ∀ J ∈ (IsolateRoots I p prec max_depth min_width).1, J.HasUniqueRoot p := by
+  induction max_depth generalizing I with
+  | zero =>
+    unfold IsolateRoots; split_ifs
+    · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+    · simp only; split
+      · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+      · split_ifs with hN hJ
+        · simp only [List.mem_cons, List.not_mem_nil, or_false]
+          grind only [newton_subset_of_has_unique_root]
+        · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+        · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+    · simp only; split
+      · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+      · split_ifs with hN hJ
+        · simp only [List.mem_cons, List.not_mem_nil, or_false]
+          grind only [newton_subset_of_has_unique_root]
+        · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+        · exfalso; grind only
+    · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+    · exfalso; grind only
+
+  | succ d ih =>
+    unfold IsolateRoots; split_ifs
+    · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+    · exfalso; grind only
+    · simp only; split
+      · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+      · split_ifs
+        · simp only [List.mem_cons, List.not_mem_nil, or_false]
+          grind only [newton_subset_of_has_unique_root]
+        · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+        · grind only
+    · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+    · grind only [merge_results, add_tsub_cancel_right, List.mem_append]
+
+end IsolationAlgorithms
 end DyadicInterval

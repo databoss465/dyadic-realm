@@ -19,8 +19,6 @@ and proves their basic properties.
   similarly for exponentiation.
 - `Isotonicity` : If I ⊆ A and J ⊆ B, then I ∘ J ⊆ A ∘ B for ∘ ∈ {+, -, *}, similarly for exponentiation.
 
-## TODO
-- Division
 -/
 namespace DyadicInterval
 section Addition

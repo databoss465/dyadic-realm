@@ -12,11 +12,10 @@ set_option linter.unusedSectionVars false
 Division by a dyadic interval is implemented as `divWithPrec` which takes a precision parameter. It computes the four possible quotient endpoints as rationals, then rounds down the minimum and rounds up the maximum to form a dyadic interval that contains all possible quotients.
 
 ## Main Definitions
-- `quotientEndpoints I J` : The set of four possible rational endpoints when dividing interval `I` by interval `J`.
+- `quotientEndpts I J` : The set of four possible rational endpoints when dividing interval `I` by interval `J`.
 - `divWithPrec prec I J` : The dyadic interval that contains all possible quotients of elements from `I` divided by elements from `J`, computed with the specified precision.
 
 ## Main Theorems
-
 - `div_sound` : For any `x ∈ I` and `y ∈ J`, the quotient `x / y` lies within the interval `divWithPrec prec I J`.
 - `div_isotonic` : If `I ⊆ A` and `J ⊆ B`, then `divWithPrec prec I J ⊆ divWithPrec prec A B`.
 -/
@@ -26,18 +25,19 @@ open Dyadic DyadicInterval Finset
 variable (I J K : DyadicInterval){A B : DyadicInterval}
 -- Dyadic Rationals are not closed under division. So we work around it...
 
-def quotientEndpoints : Finset ℚ :=
+/-- The finset of quotients of the (rational) endpoints of two dyadic intervals; division is defined using this -/
+def quotientEndpts : Finset ℚ :=
   { (I.left.toRat / J.left.toRat),
     (I.left.toRat / J.right.toRat),
     (I.right.toRat / J.left.toRat),
     (I.right.toRat / J.right.toRat)}
 
-lemma quotient_endpoints_nonempty : (quotientEndpoints I J).Nonempty := by
-  grind only [quotientEndpoints, insert_nonempty]
+lemma quotient_endpoints_nonempty : (quotientEndpts I J).Nonempty := by
+  grind only [quotientEndpts, insert_nonempty]
 
 def divWithPrec (prec : ℤ) (I J : DyadicInterval): DyadicInterval :=
   if HasZero J then 0 else
-  let s := quotientEndpoints I J
+  let s := quotientEndpts I J
   have hs := quotient_endpoints_nonempty I J
   -- Rounding down the left endpoint
   let l := (min' s hs).toDyadic prec
@@ -51,6 +51,7 @@ def divWithPrec (prec : ℤ) (I J : DyadicInterval): DyadicInterval :=
 
 variable [ZeroFree J] [ZeroFree B] (prec : ℤ)
 
+/-- `∀ y ∈ J, (I/J).left ≤ I.left/y` -/
 lemma div_left_le_left_div' (hpos : 0 < J)(y : ℝ) (hy : y ∈ J) :
   ↑(divWithPrec prec I J).left.toRat ≤ ↑I.left.toRat / y := by
     rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
@@ -61,10 +62,10 @@ lemma div_left_le_left_div' (hpos : 0 < J)(y : ℝ) (hy : y ∈ J) :
       norm_cast; simp only [divWithPrec]
       split_ifs with h
       · exfalso; grind only [haszero_iff_not_zerofree]
-      · let l := (quotientEndpoints I J).min' (quotient_endpoints_nonempty I J)
+      · let l := (quotientEndpts I J).min' (quotient_endpoints_nonempty I J)
         have h₁ : l ≤ I.left.toRat / J.right.toRat := by
           simp only [l]; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         apply le_trans _ h₁
         simp only [l]; exact Rat.toRat_toDyadic_le
 
@@ -79,13 +80,14 @@ lemma div_left_le_left_div' (hpos : 0 < J)(y : ℝ) (hy : y ∈ J) :
       · split_ifs with h
         · exfalso; grind only [haszero_iff_not_zerofree]
         · simp only
-          let l := (quotientEndpoints I J).min' (quotient_endpoints_nonempty I J)
+          let l := (quotientEndpts I J).min' (quotient_endpoints_nonempty I J)
           have h₁ : l ≤ I.left.toRat / J.left.toRat := by
             simp only [l]; apply min'_le
-            simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+            simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
           apply le_trans _ h₁
           simp only [l]; exact Rat.toRat_toDyadic_le
 
+/-- `∀ y ∈ J, I.right/y ≤ (I/J).right` -/
 lemma right_div_le_div_right' (hpos : 0 < J) (y : ℝ) (hy : y ∈ J):
   ↑I.right.toRat / y ≤ ↑(divWithPrec prec I J).right.toRat := by
     rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
@@ -96,10 +98,10 @@ lemma right_div_le_div_right' (hpos : 0 < J) (y : ℝ) (hy : y ∈ J):
       norm_cast; simp only [divWithPrec]
       split_ifs with h
       · exfalso; grind only [haszero_iff_not_zerofree]
-      · let r := (quotientEndpoints I J).max' (quotient_endpoints_nonempty I J)
+      · let r := (quotientEndpts I J).max' (quotient_endpoints_nonempty I J)
         have h₁ : I.right.toRat / J.left.toRat ≤ r := by
           simp only [r]; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         apply le_trans h₁
         simp only [r]; exact (le_of_lt Rat.lt_toRat_toDyadic_add)
 
@@ -111,13 +113,14 @@ lemma right_div_le_div_right' (hpos : 0 < J) (y : ℝ) (hy : y ∈ J):
       norm_cast; simp only [divWithPrec]
       split_ifs with h
       · exfalso; grind only [haszero_iff_not_zerofree]
-      · let r := (quotientEndpoints I J).max' (quotient_endpoints_nonempty I J)
+      · let r := (quotientEndpts I J).max' (quotient_endpoints_nonempty I J)
         have h₁ : I.right.toRat / J.right.toRat ≤ r := by
           simp only [r]; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
         apply le_trans h₁
         simp only [r]; exact (le_of_lt Rat.lt_toRat_toDyadic_add)
 
+/-- `'∀ y ∈ J, (I/J).left ≤ I.right/y` -/
 lemma div_left_le_right_div' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
   ↑(divWithPrec prec I J).left.toRat ≤ ↑I.right.toRat / y := by
     rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
@@ -131,10 +134,10 @@ lemma div_left_le_right_div' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
       norm_cast; simp only [divWithPrec]
       split_ifs with h
       · exfalso; grind only [haszero_iff_not_zerofree]
-      · let l := (quotientEndpoints I J).min' (quotient_endpoints_nonempty I J)
+      · let l := (quotientEndpts I J).min' (quotient_endpoints_nonempty I J)
         have h₁ : l ≤ I.right.toRat / J.right.toRat := by
           simp only [l]; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
         apply le_trans _ h₁
         simp only [l]; exact Rat.toRat_toDyadic_le
 
@@ -149,13 +152,14 @@ lemma div_left_le_right_div' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
       norm_cast; simp only [divWithPrec]
       split_ifs with h
       · exfalso; grind only [haszero_iff_not_zerofree]
-      · let l := (quotientEndpoints I J).min' (quotient_endpoints_nonempty I J)
+      · let l := (quotientEndpts I J).min' (quotient_endpoints_nonempty I J)
         have h₁ : l ≤ I.right.toRat / J.left.toRat := by
           simp only [l]; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         apply le_trans _ h₁
         simp only [l]; exact Rat.toRat_toDyadic_le
 
+/-- `∀ y ∈ J, I.left/y ≤ (I/J).right` -/
 lemma left_div_le_div_right' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
   ↑I.left.toRat / y ≤ ↑(divWithPrec prec I J).right.toRat := by
     rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
@@ -168,10 +172,10 @@ lemma left_div_le_div_right' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
       norm_cast; simp only [divWithPrec]
       split_ifs with h
       · exfalso; grind only [haszero_iff_not_zerofree]
-      · let r := (quotientEndpoints I J).max' (quotient_endpoints_nonempty I J)
+      · let r := (quotientEndpts I J).max' (quotient_endpoints_nonempty I J)
         have h₁ : I.left.toRat / J.left.toRat ≤ r := by
           simp only [r]; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
         apply le_trans h₁
         simp only [r]; exact (le_of_lt Rat.lt_toRat_toDyadic_add)
     · have h₀ : I.left.toRat / y ≤ (I.left.toRat : ℝ) / J.right.toRat := by
@@ -186,17 +190,19 @@ lemma left_div_le_div_right' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
       norm_cast; simp only [divWithPrec]
       split_ifs with h
       · exfalso; grind only [haszero_iff_not_zerofree]
-      · let r := (quotientEndpoints I J).max' (quotient_endpoints_nonempty I J)
+      · let r := (quotientEndpts I J).max' (quotient_endpoints_nonempty I J)
         have h₁ : I.left.toRat / J.right.toRat ≤ r := by
           simp only [r]; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         apply le_trans h₁
         simp only [r]; exact (le_of_lt Rat.lt_toRat_toDyadic_add)
 
+/-- `∀ x ∈ I, ∀ y < 0, I.right/y ≤ x/y ≤ I.left/y` -/
 lemma neg_div_bounds {x y : ℝ} (hx : x ∈ I)(h₀ : y < 0) :
   I.right.toRat / y ≤ x / y ∧ x / y ≤ I.left.toRat / y :=
       ⟨div_le_div_of_nonpos_of_le (le_of_lt h₀) hx.right, div_le_div_of_nonpos_of_le (le_of_lt h₀) hx.left⟩
 
+/-- `∀ x ∈ I, ∀ y > 0, I.left/y ≤ x/y ≤ I.right/y` -/
 lemma pos_div_bounds {x y : ℝ} (hx : x ∈ I)(h₀ : 0 < y) :
   I.left.toRat / y ≤ x / y ∧ x / y ≤ I.right.toRat / y :=
       ⟨div_le_div_of_nonneg_right hx.left (le_of_lt h₀), div_le_div_of_nonneg_right hx.right (le_of_lt h₀)⟩
@@ -204,6 +210,7 @@ lemma pos_div_bounds {x y : ℝ} (hx : x ∈ I)(h₀ : 0 < y) :
 #check div_le_div_of_nonneg_left
 #check div_le_div_of_nonneg_right
 
+/-- `∀ y ∈ J, ∀ x ≤ 0, x/J.left ≤ x/y ≤ x/J.right` -/
 lemma nonpos_div_bounds {x y : ℝ} (hy : y ∈ J) (h₀ : x ≤ 0) :
   x / J.left.toRat ≤ x / y ∧ x / y ≤ x / J.right.toRat := by
   rename_i hJ
@@ -228,6 +235,7 @@ lemma nonpos_div_bounds {x y : ℝ} (hy : y ∈ J) (h₀ : x ≤ 0) :
     · rw [neg_le_neg_iff]
       apply div_le_div_of_nonneg_left (by grind only) (by grind only) hy.right
 
+/-- `∀ y ∈ J, ∀ x ≥ 0, x/J.right ≤ x/y ≤ x/J.left` -/
 lemma nonneg_div_bounds {x y : ℝ} (hy : y ∈ J) (h₀ : 0 ≤ x) :
   x / J.right.toRat ≤ x / y ∧ x / y ≤ x / J.left.toRat := by
   rename_i hJ
@@ -265,10 +273,11 @@ theorem div_sound : ∀ x ∈ I, ∀ y ∈ J, x / y ∈ divWithPrec prec I J := 
     · exact le_trans (div_left_le_left_div' I J prec hpos y hy) h₁.left
     · exact le_trans h₁.right (right_div_le_div_right' I J prec hpos y hy)
 
-lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
-  ∀ y ∈ quotientEndpoints I J, (quotientEndpoints A J).min' (quotient_endpoints_nonempty A J) ≤ y ∧ y ≤ (quotientEndpoints A J).max' (quotient_endpoints_nonempty A J) := by
+/-- If I ⊆ A, quotitentEndpoints I J, bounded by min and max of quotientEndpts A J -/
+lemma quotientEndpts_bounds_mono_left (hI : I ⊆ A) :
+  ∀ y ∈ quotientEndpts I J, (quotientEndpts A J).min' (quotient_endpoints_nonempty A J) ≤ y ∧ y ≤ (quotientEndpts A J).max' (quotient_endpoints_nonempty A J) := by
     intro y hy; rename_i hJ
-    simp only [quotientEndpoints, mem_insert, mem_singleton] at hy
+    simp only [quotientEndpts, mem_insert, mem_singleton] at hy
     rcases ((zerofree_iff J).mp hJ) with hneg | hpos
     · have hl : (J.left.toRat : ℝ) < 0 := (neg_of_mem_neg J hneg J.left.toRat J.left_mem)
       have hr : (J.right.toRat : ℝ) < 0 := (neg_of_mem_neg J hneg J.right.toRat J.right_mem)
@@ -281,9 +290,9 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.left_mem
         constructor
         · apply le_trans _ this.left
-          simp only [min'_le, quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [min'_le, quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right
-          simp only [le_max', quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [le_max', quotientEndpts, mem_insert, mem_singleton, true_or]
 
       · have : A.right.toRat / J.right.toRat ≤ I.left.toRat / J.right.toRat ∧
           I.left.toRat / J.right.toRat ≤ A.left.toRat / J.right.toRat := by
@@ -292,9 +301,9 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.left_mem
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
 
       · have : A.right.toRat / J.left.toRat ≤ I.right.toRat / J.left.toRat ∧
           I.right.toRat / J.left.toRat ≤ A.left.toRat / J.left.toRat := by
@@ -303,9 +312,9 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.right_mem
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
 
       · have : A.right.toRat / J.right.toRat ≤ I.right.toRat / J.right.toRat ∧
           I.right.toRat / J.right.toRat ≤ A.left.toRat / J.right.toRat := by
@@ -314,9 +323,9 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.right_mem
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
 
     · have hl : 0 < (J.left.toRat : ℝ) := (pos_of_mem_pos J hpos J.left.toRat J.left_mem)
       have hr : 0 < (J.right.toRat : ℝ) := (pos_of_mem_pos J hpos J.right.toRat J.right_mem)
@@ -329,9 +338,9 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.left_mem
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
 
       · have : A.left.toRat / J.right.toRat ≤ I.left.toRat / J.right.toRat ∧
           I.left.toRat / J.right.toRat ≤ A.right.toRat / J.right.toRat := by
@@ -340,9 +349,9 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.left_mem
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
 
       · have : A.left.toRat / J.left.toRat ≤ I.right.toRat / J.left.toRat ∧
           I.right.toRat / J.left.toRat ≤ A.right.toRat / J.left.toRat := by
@@ -351,9 +360,9 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.right_mem
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
 
       · have : A.left.toRat / J.right.toRat ≤ I.right.toRat / J.right.toRat ∧
           I.right.toRat / J.right.toRat ≤ A.right.toRat / J.right.toRat := by
@@ -362,10 +371,11 @@ lemma quotientEndpoints_bounds_mono_left (hI : I ⊆ A) :
           exact Set.mem_of_subset_of_mem ((subset_iff I A).mp hI) I.right_mem
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
 
+/-- Division is isotonic in the numerator -/
 lemma num_div_isotonic (hI : I ⊆ A) : (divWithPrec prec I J) ⊆ (divWithPrec prec A J) := by
   simp only [subset_iff_endpts, divWithPrec]
   rcases haszero_or_zerofree J with hJ | hJ
@@ -375,16 +385,17 @@ lemma num_div_isotonic (hI : I ⊆ A) : (divWithPrec prec I J) ⊆ (divWithPrec 
     constructor
     · apply Rat.toDyadic_mono
       apply le_min'; intro y hy
-      exact (quotientEndpoints_bounds_mono_left _ _ hI _ hy).left
+      exact (quotientEndpts_bounds_mono_left _ _ hI _ hy).left
     · apply add_le_add' _ (by rfl)
       apply Rat.toDyadic_mono
       apply max'_le; intro y hy
-      exact (quotientEndpoints_bounds_mono_left _ _ hI _ hy).right
+      exact (quotientEndpts_bounds_mono_left _ _ hI _ hy).right
 
-lemma quotientEndpoints_bounds_mono_right (hJ : J ⊆ B) :
-  ∀ y ∈ quotientEndpoints I J, (quotientEndpoints I B).min' (quotient_endpoints_nonempty I B) ≤ y ∧ y ≤ (quotientEndpoints I B).max' (quotient_endpoints_nonempty I B) := by
+/-- If J ⊆ B, quotitentEndpoints I J, bounded by min and max of quotientEndpts I B -/
+lemma quotientEndpts_bounds_mono_right (hJ : J ⊆ B) :
+  ∀ y ∈ quotientEndpts I J, (quotientEndpts I B).min' (quotient_endpoints_nonempty I B) ≤ y ∧ y ≤ (quotientEndpts I B).max' (quotient_endpoints_nonempty I B) := by
     intro y hy; rename_i hJ' hB'
-    simp only [quotientEndpoints, mem_insert, mem_singleton] at hy
+    simp only [quotientEndpts, mem_insert, mem_singleton] at hy
     have h₀ := Set.mem_of_subset_of_mem ((subset_iff J B).mp hJ) J.left_mem
     have h₁ := Set.mem_of_subset_of_mem ((subset_iff J B).mp hJ) J.right_mem
     rcases hy with rfl | rfl | rfl | rfl
@@ -393,58 +404,59 @@ lemma quotientEndpoints_bounds_mono_right (hJ : J ⊆ B) :
       · have := (nonneg_div_bounds B h₀ hl); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
       · have := (nonpos_div_bounds B h₀ hr); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
     -- I.left / J.right
     · rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
       · have := (nonneg_div_bounds B h₁ hl); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
       · have := (nonpos_div_bounds B h₁ hr); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
     -- I.right / J.left
     · rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
       · have := (nonneg_div_bounds B h₀ hl); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
       · have := (nonpos_div_bounds B h₀ hr); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
     -- I.right / J.right
     · rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
       · have := (nonneg_div_bounds B h₁ hl); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
       · have := (nonpos_div_bounds B h₁ hr); norm_cast at this
         constructor
         · apply le_trans _ this.left; apply min'_le
-          simp only [quotientEndpoints, mem_insert, mem_singleton, true_or, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, true_or, or_true]
         · apply le_trans this.right; apply le_max'
-          simp only [quotientEndpoints, mem_insert, mem_singleton, or_true]
+          simp only [quotientEndpts, mem_insert, mem_singleton, or_true]
 
+/-- Division is isotonic in the denominator -/
 lemma denom_div_isotonic (hJ : J ⊆ B) : (divWithPrec prec I J) ⊆ (divWithPrec prec I B) := by
   simp only [subset_iff_endpts, divWithPrec]
   rcases haszero_or_zerofree J with hJ' | hJ'
@@ -455,11 +467,11 @@ lemma denom_div_isotonic (hJ : J ⊆ B) : (divWithPrec prec I J) ⊆ (divWithPre
     constructor
     · apply Rat.toDyadic_mono
       apply le_min'; intro y hy
-      exact (quotientEndpoints_bounds_mono_right I J hJ y hy).left
+      exact (quotientEndpts_bounds_mono_right I J hJ y hy).left
     · apply add_le_add' _ (by rfl)
       apply Rat.toDyadic_mono
       apply max'_le; intro y hy
-      exact (quotientEndpoints_bounds_mono_right I J hJ y hy).right
+      exact (quotientEndpts_bounds_mono_right I J hJ y hy).right
 
 theorem div_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) :
   (divWithPrec prec I J) ⊆ (divWithPrec prec A B) := by

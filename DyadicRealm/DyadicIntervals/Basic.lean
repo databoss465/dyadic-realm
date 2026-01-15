@@ -19,7 +19,7 @@ Constructs non-empty dyadic intervals from its endpoints.
 - `ZeroFree`: A decidable predicate indicating the interval strictly excludes 0 (useful for division safety).
 - `midpoint`: The arithmetic mean of the endpoints.
 - `intersection` : Intersection of `DyadicInterval` as `Option DyadicInterval`
-- `hull` : The hull of two interval
+- `hull` : The hull of two intervals
 - `split` : Splits an interval at the midpoint
 
 -/
@@ -401,6 +401,9 @@ instance : HasSSubset DyadicInterval where SSubset I J := I ⊆ J ∧ I ≠ J
   apply notMem_subset ((subset_iff J I).mp h) hI
 
 @[simp, grind] theorem ssubset_iff : I ⊂ J ↔ I ⊆ J ∧ I ≠ J := by rfl
+
+instance : Decidable (J ⊆ I) := by simp only [subset_iff_endpts]; infer_instance
+instance : Decidable (J ⊂ I) := by simp only [ssubset_iff]; infer_instance
 
 /-- Width of a subset is at most the width of the superset -/
 theorem subset_width : I ⊆ J → I.width ≤ J.width := by
