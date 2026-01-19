@@ -63,17 +63,17 @@ theorem toRat_half {a : Dyadic} : (half a).toRat = a.toRat/2 := by
 
 @[simp, grind]
 theorem add_le_add' {a b c d : Dyadic} (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
-  simp only [le_iff_toRat, toRat_add] at *
+  simp only [← toRat_le_toRat_iff, toRat_add] at *
   exact add_le_add h₁ h₂
 
 @[simp, grind]
 lemma neg_le_iff {a b : Dyadic} : -a ≤ b ↔ -b ≤ a := by
-  simp only [le_iff_toRat, toRat_neg]
+  simp only [← toRat_le_toRat_iff, toRat_neg]
   exact neg_le
 
 @[simp, grind]
 lemma le_neg_iff {a b : Dyadic} : a ≤ -b ↔ b ≤ -a := by
-  simp only [le_iff_toRat, toRat_neg]
+  simp only [← toRat_le_toRat_iff, toRat_neg]
   exact le_neg
 
 @[simp, grind]
@@ -108,27 +108,27 @@ lemma toRat_eq {a b : Dyadic} :  a = b ↔ a.toRat = b.toRat  := by
   constructor
   · intro h
     rw [le_antisymm_iff] at *
-    simp only [← le_iff_toRat, h, and_true]
+    simp only [toRat_le_toRat_iff, h, and_true]
   · intro h
     rw [le_antisymm_iff] at *
-    simp only [le_iff_toRat, h, and_true]
+    simp only [← toRat_le_toRat_iff, h, and_true]
 
 @[simp, grind]
 lemma toRat_max {a b : Dyadic} : (max a b).toRat = max a.toRat b.toRat := by
   rcases le_total a b with ha | hb
   · rw [max_eq_right ha, max_eq_right]
-    rw [← le_iff_toRat]; exact ha
+    rw [toRat_le_toRat_iff]; exact ha
   · rw [max_eq_left hb, max_eq_left]
-    rw [← le_iff_toRat]; exact hb
+    rw [toRat_le_toRat_iff]; exact hb
 
 
 @[simp, grind]
 lemma toRat_min {a b : Dyadic} : (min a b).toRat = min a.toRat b.toRat := by
   rcases le_total a b with ha | hb
   · rw [min_eq_left ha, min_eq_left]
-    rw [← le_iff_toRat]; exact ha
+    rw [toRat_le_toRat_iff]; exact ha
   · rw [min_eq_right hb, min_eq_right]
-    rw [← le_iff_toRat]; exact hb
+    rw [toRat_le_toRat_iff]; exact hb
 
 end DyadicAddendum
 end Dyadic
@@ -139,7 +139,7 @@ open Rat Dyadic
 
 @[simp, grind] lemma toDyadic_mono {x y : ℚ} {prec : ℤ} (h : x ≤ y) :
   x.toDyadic prec ≤ y.toDyadic prec := by
-  simp only [le_iff_toRat, toRat_toDyadic]
+  simp only [← toRat_le_toRat_iff, toRat_toDyadic]
   apply div_le_div_of_nonneg_right
   · norm_cast; apply floor_monotone
     rw [mul_le_mul_iff_left₀]
@@ -173,7 +173,7 @@ variable (I J K : DyadicInterval)(a : Dyadic)(n : ℕ)
     grind only
 
 @[simp, grind] theorem isValid_toRat : I.left.toRat ≤ I.right.toRat := by
-  simp only [← le_iff_toRat, I.isValid]
+  simp only [toRat_le_toRat_iff, I.isValid]
 
 @[simp, grind] theorem isValid' : (I.left.toRat : ℝ) ≤ I.right.toRat := by
   simp only [Rat.cast_le, isValid_toRat]
@@ -200,7 +200,7 @@ def ofRatWithPrec (prec : ℤ) (x : ℚ) : DyadicInterval :=
     simp only [l, r]
     split_ifs with h
     · rfl
-    · rw [le_iff_toRat]
+    · rw [← toRat_le_toRat_iff]
       apply le_trans Rat.toRat_toDyadic_le
       exact (le_of_lt Rat.lt_toRat_toDyadic_add)
   ⟨l, r, h⟩
@@ -261,7 +261,7 @@ theorem nonempty : Nonempty (I : Set ℝ) := ⟨↑I.left.toRat, I.left_mem⟩
 def width : Dyadic := I.right - I.left
 
 @[simp, grind] theorem width_nonneg : 0 ≤ I.width := by
-  simp only [width, le_iff_toRat, toRat_sub, toRat_zero]; rw [sub_nonneg]
+  simp only [width, ← toRat_le_toRat_iff, toRat_sub, toRat_zero]; rw [sub_nonneg]
   exact I.isValid_toRat
 
 def lt : Prop := I.right < J.left
@@ -280,14 +280,14 @@ instance : Decidable (0 < I) :=
 @[simp, grind] theorem pos_of_mem_pos (hI : 0 < I) : ∀ y ∈ I, 0 < y := by
   intro y hy
   simp only [lt_iff, right_coe_zero] at hI
-  rw [lt_iff_toRat, toRat_zero] at hI
+  rw [← toRat_lt_toRat_iff, toRat_zero] at hI
   simp only [mem_iff_le_endpts] at hy
   apply LE.le.trans_lt' hy.left; norm_cast
 
 @[simp, grind] theorem neg_of_mem_neg (hI : I < 0) : ∀ y ∈ I, y < 0 := by
   intro y hy
   simp only [lt_iff, left_coe_zero] at hI
-  rw [lt_iff_toRat, toRat_zero] at hI
+  rw [← toRat_lt_toRat_iff, toRat_zero] at hI
   simp only [mem_iff_le_endpts] at hy
   apply LE.le.trans_lt hy.right; norm_cast
 
@@ -314,7 +314,7 @@ instance : Decidable (HasZero I) :=
 
 @[simp, grind] theorem haszero_iff_mem_zero : HasZero I ↔ 0 ∈ I := by
   simp only [mem_iff_le_endpts, haszero_iff]; norm_cast
-  simp only [le_iff_toRat, toRat_zero]
+  simp only [← toRat_le_toRat_iff, toRat_zero]
 
 /-- Dyadic interval has zero iff if it is not zero free -/
 @[simp, grind] theorem haszero_iff_not_zerofree : HasZero I ↔ ¬ZeroFree I := by
@@ -327,7 +327,6 @@ instance : Decidable (HasZero I) :=
       rw [not_lt]; exact h.right
     · change ¬0<I.left
       rw [not_lt]; exact h.left
-
   · intro h
     rw [zerofree_iff, not_or] at h
     rw [haszero_iff, ← not_lt, ← not_lt]
@@ -360,20 +359,20 @@ def midpoint : Dyadic := half (I.left + I.right)
 -- def magnitude : Dyadic := (max (abs (I.left.toRat)) (abs (I.right.toRat))).toDyadic _
 
 @[simp, grind] theorem left_le_midpoint : I.left ≤ I.midpoint := by
-  simp only [le_iff_toRat, midpoint, toRat_half]
+  simp only [← toRat_le_toRat_iff, midpoint, toRat_half]
   field_simp
   rw [mul_two, toRat_add]
   exact add_le_add (by rfl) (I.isValid_toRat)
 
 @[simp, grind] theorem midpoint_le_right : I.midpoint ≤ I.right := by
-  simp only [le_iff_toRat, midpoint, toRat_half]
+  simp only [← toRat_le_toRat_iff, midpoint, toRat_half]
   field_simp
   rw [two_mul, toRat_add]
   apply add_le_add (I.isValid_toRat) (by rfl)
 
 @[simp, grind] theorem midpoint_mem : ↑I.midpoint.toRat ∈ I := by
   simp only [mem_iff_mem_Icc, Set.mem_Icc, Rat.cast_le]
-  grind only [left_le_midpoint, midpoint_le_right, le_iff_toRat]
+  grind only [left_le_midpoint, midpoint_le_right, ← toRat_le_toRat_iff]
 
 end DI_Structural
 
@@ -388,7 +387,7 @@ instance : HasSSubset DyadicInterval where SSubset I J := I ⊆ J ∧ I ≠ J
 @[simp, grind] theorem subset_iff : I ⊆ J ↔ I.toSet ⊆ J.toSet := by
   simp only [toSet]
   rw [Icc_subset_Icc_iff I.isValid']
-  simp only [Rat.cast_le, ← le_iff_toRat]; rfl
+  simp only [Rat.cast_le, toRat_le_toRat_iff]; rfl
 
 @[simp, grind] theorem subset_iff_endpts : I ⊆ J ↔ J.left ≤ I.left ∧ I.right ≤ J.right := by rfl
 
@@ -407,7 +406,7 @@ instance : Decidable (J ⊂ I) := by simp only [ssubset_iff]; infer_instance
 
 /-- Width of a subset is at most the width of the superset -/
 theorem subset_width : I ⊆ J → I.width ≤ J.width := by
-  grind only [subset_iff_endpts, width, le_iff_toRat]
+  grind only [subset_iff_endpts, width, ← toRat_le_toRat_iff]
 
 /-- If a subset has equal width then it is equal to the superset -/
 theorem subset_and_eq_width : I ⊆ J → I.width = J.width → I = J := by
@@ -476,13 +475,13 @@ theorem inter_optimal (X : DyadicInterval) (hI : X ⊆ I) (hJ : X ⊆ J) : ∃ K
   simp only [toSet, Set.Icc_inter_Icc] at h
   rw [Set.Icc_subset_Icc_iff X.isValid'] at h
   norm_cast at h
-  simp only [← toRat_max, ← toRat_min, ← le_iff_toRat] at h
+  simp only [← toRat_max, ← toRat_min, toRat_le_toRat_iff] at h
   have hK := le_trans h.left (le_trans X.isValid h.right)
   use ⟨max I.left J.left, min I.right J.right, hK⟩
   simp only [intersection, hK, Option.dite_none_right_eq_some, exists_prop,
     subset_iff, and_self, true_and, toSet, Set.Icc_subset_Icc_iff X.isValid']
   norm_cast
-  simp only [← le_iff_toRat, h, and_self]
+  simp only [toRat_le_toRat_iff, h, and_self]
 
 /-- Set corresponding to the nonempty intersection of `DyadicInterval`s is the intersection of corresponding sets -/
 theorem inter_toSet_some (h : I ⊓ J = some K) : (I : Set ℝ) ∩ ↑J = ↑K := by
@@ -510,7 +509,7 @@ theorem inter_toSet_none (h : I ⊓ J = none) : (I : Set ℝ) ∩ ↑J = ∅ := 
   simp only [Set.Icc_inter_Icc, Set.mem_Icc, ← Rat.cast_max, ← toRat_max, ← Rat.cast_min, ← toRat_min] at h'
   have h' := le_trans h'.left h'.right
   norm_cast at h'
-  rw [← le_iff_toRat] at h'
+  rw [toRat_le_toRat_iff] at h'
   exact h h'
 
 def hull : DyadicInterval :=

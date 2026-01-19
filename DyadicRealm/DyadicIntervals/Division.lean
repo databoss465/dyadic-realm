@@ -6,6 +6,7 @@ import DyadicRealm.DyadicIntervals.Arithmetic
 set_option linter.style.commandStart false
 set_option linter.style.longLine false
 set_option linter.unusedSectionVars false
+set_option linter.style.emptyLine false
 
 /-!
 # Division of Dyadic Intervals
@@ -44,7 +45,7 @@ def divWithPrec (prec : ℤ) (I J : DyadicInterval): DyadicInterval :=
   -- Rounding up the right endpoint
   let r := (max' s hs).toDyadic prec + Dyadic.ofIntWithPrec 1 prec
   have h : l ≤ r := by
-    simp only [l, r, le_iff_toRat]
+    simp only [l, r, ← toRat_le_toRat_iff]
     apply le_trans Rat.toRat_toDyadic_le
     exact le_trans (min'_le_max' s hs) (le_of_lt Rat.lt_toRat_toDyadic_add)
   ⟨l, r, h⟩
@@ -73,7 +74,7 @@ lemma div_left_le_left_div' (hpos : 0 < J)(y : ℝ) (hy : y ∈ J) :
         rw [← (neg_neg I.left.toRat), Rat.cast_neg, neg_div, neg_div, neg_le_neg_iff]
         apply div_le_div_of_nonneg_left _ _ hy.left
         · simp only [Rat.cast_neg, Left.nonneg_neg_iff, hr]
-        · norm_cast; rw [← toRat_zero, ← lt_iff_toRat]
+        · norm_cast; rw [← toRat_zero, toRat_lt_toRat_iff]
           rw [lt_iff, right_coe_zero] at hpos; exact hpos
       apply le_trans _ h₀
       norm_cast; simp only [divWithPrec]
@@ -127,7 +128,7 @@ lemma div_left_le_right_div' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
     · have h₀ : ↑I.right.toRat / ↑J.right.toRat ≤ ↑I.right.toRat / y := by
         rw [← (neg_neg J.right.toRat), ← (neg_neg y), Rat.cast_neg, div_neg, div_neg, neg_le_neg_iff]
         apply div_le_div_of_nonneg_left hl
-        · simp only [lt_iff, left_coe_zero, lt_iff_toRat, toRat_zero] at hneg
+        · simp only [lt_iff, left_coe_zero, ← toRat_lt_toRat_iff, toRat_zero] at hneg
           norm_cast; simp only [Left.neg_pos_iff]; exact hneg
         · simp only [Rat.cast_neg, neg_le_neg_iff, hy.right]
       apply le_trans _ h₀
@@ -183,7 +184,7 @@ lemma left_div_le_div_right' (hneg : J < 0) (y : ℝ) (hy : y ∈ J):
         rw [← (neg_neg I.left.toRat), Rat.cast_neg, neg_div_neg_eq, neg_div_neg_eq]
         apply div_le_div_of_nonneg_left
         · simp only [Rat.cast_neg, Left.nonneg_neg_iff, hr]
-        · simp only [lt_iff, left_coe_zero, lt_iff_toRat, toRat_zero] at hneg
+        · simp only [lt_iff, left_coe_zero, ← toRat_lt_toRat_iff, toRat_zero] at hneg
           norm_cast; simp only [Left.neg_pos_iff]; exact hneg
         · simp only [Rat.cast_neg, neg_le_neg_iff, hy.right]
       apply le_trans h₀

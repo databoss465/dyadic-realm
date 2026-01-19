@@ -8,6 +8,7 @@ import DyadicRealm.DyadicIntervals.PolynomialBounds
 set_option linter.style.commandStart false
 set_option linter.style.longLine false
 set_option linter.unusedVariables false
+set_option linter.style.emptyLine false
 
 /-!
 # Polynomial Roots and Dyadic Intervals
@@ -255,7 +256,7 @@ theorem pos_deriv_of_newton_subset_of_has_root (h : 0 < intervalEvalWithPrec pre
         _root_.add_comm, ← sub_eq_add_neg (I.midpoint.toRat : ℝ)]
       have h'' := (mem_newton prec I p (pos_zerofree _ h) c hc).left
       apply le_trans _ h''; norm_cast
-      rw [← le_iff_toRat]; exact h'.left
+      rw [toRat_le_toRat_iff]; exact h'.left
 
     · refine ⟨le_trans this.left h₀, ?_⟩
       obtain ⟨c, hc, hc'⟩ := mvt_real_poly p I _ I.right_mem; rw[hc']
@@ -263,7 +264,7 @@ theorem pos_deriv_of_newton_subset_of_has_root (h : 0 < intervalEvalWithPrec pre
         _root_.add_comm, ← sub_eq_add_neg (I.midpoint.toRat : ℝ)]
       have h'' := (mem_newton prec I p (pos_zerofree _ h) c hc).right
       apply le_trans h''; norm_cast
-      rw [← le_iff_toRat]; exact h'.right
+      rw [toRat_le_toRat_iff]; exact h'.right
 
   simp only [mem_image] at this
   unfold HasRoot; exact this
@@ -286,7 +287,7 @@ theorem neg_deriv_of_newton_subset_of_has_root (h : intervalEvalWithPrec prec (d
       rw [le_sub_iff_add_le, _root_.add_comm, ← sub_eq_add_neg (I.midpoint.toRat : ℝ)]
       have h'' := (mem_newton prec I p (neg_zerofree _ h) c hc).right
       apply le_trans h''; norm_cast
-      rw [← le_iff_toRat]; exact h'.right
+      rw [toRat_le_toRat_iff]; exact h'.right
 
     · refine ⟨le_trans this.left h₀, ?_⟩
       obtain ⟨c, hc, hc'⟩ := mvt_real_poly p I _ I.left_mem; simp only [hc']
@@ -295,7 +296,7 @@ theorem neg_deriv_of_newton_subset_of_has_root (h : intervalEvalWithPrec prec (d
       rw [_root_.add_comm, ← sub_eq_add_neg (I.midpoint.toRat : ℝ)]
       have h'' := (mem_newton prec I p (neg_zerofree _ h) c hc).left
       apply le_trans _ h''; norm_cast
-      rw [← le_iff_toRat]; exact h'.left
+      rw [toRat_le_toRat_iff]; exact h'.left
   simp only [mem_image] at this
   unfold HasRoot; exact this
 

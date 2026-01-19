@@ -118,7 +118,7 @@ variable (I J K : DyadicInterval){A B : DyadicInterval}(a : Dyadic)(n : ℕ)
 
 def neg (I : DyadicInterval) : DyadicInterval :=
   have h : -I.right ≤ -I.left := by
-     simp only [le_iff_toRat, toRat_neg, neg_le_neg_iff, I.isValid_toRat]
+     simp only [← toRat_le_toRat_iff, toRat_neg, neg_le_neg_iff, I.isValid_toRat]
   ⟨-I.right, -I.left, h⟩
 
 instance : Neg DyadicInterval := ⟨DyadicInterval.neg⟩
@@ -252,13 +252,13 @@ lemma mul_left_le_left_mul' (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤
   rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.left.toRat * J.left.toRat := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply min'_le
       simp only [productEndpts, mem_insert, mem_singleton, true_or]
     exact le_trans h₁ (mul_le_mul_of_nonneg_left hy.left hl)
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.left.toRat * J.right.toRat := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply min'_le
       simp only [productEndpts, mem_insert, mem_singleton, true_or, or_true]
     apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr)
@@ -267,13 +267,13 @@ lemma mul_left_le_right_mul' (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat �
   rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.right.toRat * J.left.toRat := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply min'_le
       simp only [productEndpts, mem_insert, mem_singleton, true_or, or_true]
     exact le_trans h₁ (mul_le_mul_of_nonneg_left hy.left hl)
   · have h₁ : ((I * J).left.toRat : ℝ)  ≤ I.right.toRat * J.right.toRat := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply min'_le
       simp only [productEndpts, mem_insert, mem_singleton, or_true]
     apply le_trans h₁ (mul_le_mul_of_nonpos_left hy.right hr)
@@ -282,13 +282,13 @@ lemma left_mul_le_mul_right' (y : ℝ) (hy : y ∈ J) : ↑I.left.toRat * y ≤ 
   rcases le_total 0 (I.left.toRat : ℝ) with hl | hr
   · have h₁ : I.left.toRat * J.right.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply le_max'
       simp only [productEndpts, mem_insert, mem_singleton, true_or, or_true]
     exact le_trans (mul_le_mul_of_nonneg_left hy.right hl) h₁
   · have h₁ : I.left.toRat * J.left.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply le_max'
       simp only [productEndpts, mem_insert, mem_singleton, true_or]
     exact le_trans (mul_le_mul_of_nonpos_left hy.left hr) h₁
@@ -297,13 +297,13 @@ lemma right_mul_le_mul_right' (y : ℝ) (hy : y ∈ J) : ↑I.right.toRat * y �
   rcases le_total 0 (I.right.toRat : ℝ) with hl | hr
   · have h₁ : I.right.toRat * J.right.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply le_max'
       simp only [productEndpts, mem_insert, mem_singleton, or_true]
     exact le_trans (mul_le_mul_of_nonneg_left hy.right hl) h₁
   · have h₁ : I.right.toRat * J.left.toRat ≤ ((I * J).right.toRat : ℝ) := by
       norm_cast
-      rw [← toRat_mul, ← le_iff_toRat]
+      rw [← toRat_mul, toRat_le_toRat_iff]
       apply le_max'
       simp only [productEndpts, mem_insert, mem_singleton, true_or, or_true]
     exact le_trans (mul_le_mul_of_nonpos_left hy.left hr) h₁
@@ -387,7 +387,7 @@ theorem mul_sound : ∀ x ∈ I, ∀ y ∈ J, x * y ∈ (I * J) := by
 
 lemma productEndpts_image : ∀ z ∈ productEndpts I J, ∃ x ∈ I, ∃ y ∈ J, x * y = z.toRat := by
   intro z hz
-  simp [productEndpts] at hz
+  simp only [productEndpts, mem_insert, mem_singleton] at hz
   rcases hz with rfl | rfl | rfl | rfl
   · use I.left.toRat, left_mem I, J.left.toRat, left_mem J; simp only [toRat_mul, Rat.cast_mul]
   · use I.left.toRat, left_mem I, J.right.toRat, right_mem J; simp only [toRat_mul, Rat.cast_mul]
@@ -399,19 +399,16 @@ theorem mul_sharp : ∀ z ∈ (I * J), ∃ x ∈ I, ∃ y ∈ J, x * y = z := by
   rw [mem_iff_le_endpts] at hz
   let Domain := Set.Icc (I.left.toRat : ℝ) I.right.toRat ×ˢ Set.Icc (J.left.toRat : ℝ) J.right.toRat
   let Image := (fun (p : ℝ × ℝ) ↦ p.1 * p.2) '' Domain
-
   have h₁ : IsConnected Domain := by
     apply IsConnected.prod
     · apply isConnected_Icc
       exact I.isValid'
     · apply isConnected_Icc
       exact J.isValid'
-
   have h₂ : IsConnected Image := by
     apply IsConnected.image h₁
     apply Continuous.continuousOn
     exact continuous_mul
-
   have h₃ : ((I * J).left.toRat : ℝ) ∈ Image := by
     simp only [Image, Set.mem_image, Prod.exists]
     obtain ⟨x, hx, y, hy, hxy⟩ := productEndpts_image I J (I * J).left (mul_left_mem_product_endpts I J)
@@ -430,12 +427,10 @@ theorem mul_sharp : ∀ z ∈ (I * J), ∃ x ∈ I, ∃ y ∈ J, x * y = z := by
       rw [mem_iff_le_endpts] at hx hy
       grind only
     · exact hxy
-
   have h : z ∈ Image := by
     apply Set.mem_of_subset_of_mem
-    apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
-    simp only [Set.mem_Icc, hz, and_self]
-
+    · apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
+    · simp only [Set.mem_Icc, hz, and_self]
   rcases h with ⟨⟨x,y⟩, ⟨hx, hy⟩, h_mem⟩
   use x, hx, y, hy
 end Part1
@@ -480,7 +475,7 @@ variable (I J K : DyadicInterval){A B : DyadicInterval}(a : Dyadic)(n : ℕ)
 /-- For odd `n`, the exponentiation fuction is monotonic, so `I^n` is simply `[L^n, R^n]` -/
 def powOdd (n : ℕ) (hn : n % 2 = 1) : DyadicInterval :=
   have h : I.left ^ n ≤ I.right ^ n := by
-    simp only [le_iff_toRat, toRat_pow]
+    simp only [← toRat_le_toRat_iff, toRat_pow]
     rw [Odd.pow_le_pow]
     · exact I.isValid_toRat
     · rw [Nat.odd_iff]
@@ -497,7 +492,7 @@ def powEven (n : ℕ) (hn : n % 2 = 0) : DyadicInterval :=
     unfold l' r l
     split_ifs
     · apply le_max_of_le_left
-      rw [le_iff_toRat, toRat_zero, toRat_pow]
+      rw [← toRat_le_toRat_iff, toRat_zero, toRat_pow]
       apply Even.pow_nonneg hn
     · apply min_le_max
   ⟨l', r, h⟩
@@ -541,14 +536,12 @@ theorem powEven_sound (hn : n % 2 = 0) : ∀ x ∈ I, x ^ n ∈ powEven I n hn :
         apply le_max_of_le_right
         rw [toRat_pow, Rat.cast_pow]
         apply pow_le_pow_left₀ hx' hx.right
-
       · rw [toRat_max, Rat.cast_max]
         apply le_max_of_le_left
         rw [toRat_pow, ← Even.neg_pow hn,← Even.neg_pow hn (I.left.toRat), Rat.cast_pow]
         apply pow_le_pow_left₀
         · grind only
         · simp only [Rat.cast_neg, neg_le_neg_iff, hx.left]
-
   -- I doesn't cross 0
   · simp only [not_and_or, not_le] at h₀
     rcases h₀ with hpos | hneg
@@ -558,14 +551,14 @@ theorem powEven_sound (hn : n % 2 = 0) : ∀ x ∈ I, x ^ n ∈ powEven I n hn :
         rw [toRat_pow, Rat.cast_pow]
         apply pow_le_pow_left₀ _ hx.left
         norm_cast
-        rw [← toRat_zero, ← le_iff_toRat]
+        rw [← toRat_zero, toRat_le_toRat_iff]
         grind only
       have h₂ : x ^ n ≤ ((I.right ^ n).toRat : ℝ) := by
         rw [toRat_pow, Rat.cast_pow]
         apply pow_le_pow_left₀ _ hx.right
         apply le_trans _ hx.left
         norm_cast
-        rw [← toRat_zero, ← le_iff_toRat]
+        rw [← toRat_zero, toRat_le_toRat_iff]
         grind only
       constructor
       · exact le_trans (min_le_left _ _) h₁
@@ -577,7 +570,7 @@ theorem powEven_sound (hn : n % 2 = 0) : ∀ x ∈ I, x ^ n ∈ powEven I n hn :
         rw [← Even.neg_pow hn, ← Even.neg_pow hn x]
         apply pow_le_pow_left₀
         · norm_cast
-          rw [← toRat_zero, ← toRat_neg, ← le_iff_toRat]
+          rw [← toRat_zero, ← toRat_neg, toRat_le_toRat_iff]
           grind only
         · rw [mem_iff_le_endpts] at hx
           grind only
@@ -589,7 +582,7 @@ theorem powEven_sound (hn : n % 2 = 0) : ∀ x ∈ I, x ^ n ∈ powEven I n hn :
           apply neg_le_neg
           apply le_trans hx.right
           norm_cast
-          rw [← toRat_zero, ← le_iff_toRat]
+          rw [← toRat_zero, toRat_le_toRat_iff]
           grind only
         · exact neg_le_neg hx.left
       constructor
@@ -620,16 +613,13 @@ theorem powOdd_sharp (hn : n % 2 = 1) : ∀ z ∈ (powOdd I n hn), ∃ x ∈ I, 
   simp only [mem_iff_le_endpts, toRat_pow, Rat.cast_pow] at hz
   let Domain := Set.Icc (I.left.toRat : ℝ) I.right.toRat
   let Image := (fun x ↦ x ^ n) '' Domain
-
   have h₁ : IsConnected Domain := by
     apply isConnected_Icc
     simp only [I.isValid']
-
   have h₂ : IsConnected Image := by
     apply IsConnected.image h₁
     apply Continuous.continuousOn
     apply continuous_pow
-
   have h₃ : ((I.left.toRat ^ n) : ℝ) ∈ Image := by
     simp only [Image, Set.mem_image]
     use (I.left.toRat : ℝ)
@@ -637,7 +627,6 @@ theorem powOdd_sharp (hn : n % 2 = 1) : ∀ z ∈ (powOdd I n hn), ∃ x ∈ I, 
     · apply Set.left_mem_Icc.mpr
       simp only [I.isValid']
     · simp only
-
   have h₄ : ((I.right.toRat ^ n) : ℝ) ∈ Image := by
     simp only [Image, Set.mem_image]
     use (I.right.toRat : ℝ)
@@ -645,12 +634,10 @@ theorem powOdd_sharp (hn : n % 2 = 1) : ∀ z ∈ (powOdd I n hn), ∃ x ∈ I, 
     · apply Set.right_mem_Icc.mpr
       simp only [I.isValid']
     · simp only
-
   have h : z ∈ Image := by
     apply Set.mem_of_subset_of_mem
-    apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
-    simp only [Set.mem_Icc, hz, and_self]
-
+    · apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
+    · simp only [Set.mem_Icc, hz, and_self]
   rcases h with ⟨x, hx, hx'⟩
   use x, hx, hx'
 
@@ -663,12 +650,10 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
   have h₁ : IsConnected Domain := by
     apply isConnected_Icc
     simp only [I.isValid']
-
   have h₂ : IsConnected Image := by
     apply IsConnected.image h₁
     apply Continuous.continuousOn
     apply continuous_pow
-
   have h₄ : max ((I.left.toRat ^ n) : ℝ) ((I.right.toRat ^ n) : ℝ) ∈ Image := by
     simp only [Image, Set.mem_image]
     rcases le_total ((I.left.toRat : ℝ)^n) ((I.right.toRat : ℝ)^n) with h | h
@@ -676,7 +661,7 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
       use I.right.toRat
       constructor
       · simp only [Domain, Set.mem_Icc, Rat.cast_le, le_refl, and_true]
-        rw [← le_iff_toRat]
+        rw  [toRat_le_toRat_iff]
         exact I.isValid
       · rfl
     · rw [max_eq_left h]
@@ -684,34 +669,29 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
       constructor
       · simp only [Domain, Set.mem_Icc, le_refl, true_and, I.isValid']
       · rfl
-
   split_ifs at hz with hI
   -- I crosses 0
   · simp only [mem_iff_le_endpts, toRat_zero, Rat.cast_zero,
       toRat_max, Rat.cast_max, toRat_pow, Rat.cast_pow] at hz
-
     have h₃ : 0 ∈ Image := by
       simp only [Image, Set.mem_image]
       use 0
       constructor
       · simp only [Domain, Set.mem_Icc]
         norm_cast
-        rw [← toRat_zero, ← le_iff_toRat, ← le_iff_toRat]
+        rw [← toRat_zero, toRat_le_toRat_iff, toRat_le_toRat_iff]
         exact hI
       · simp only [pow_eq_zero_iff', ne_eq, true_and]
         exact hn'
-
     have h : z ∈ Image := by
       apply Set.mem_of_subset_of_mem
-      apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
-      simp only [Set.mem_Icc, hz, and_self]
-
+      · apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
+      · simp only [Set.mem_Icc, hz, and_self]
     rcases h with ⟨x, hx, hx'⟩
     use x, hx, hx'
   -- I doesn't cross 0
   · simp only [mem_iff_le_endpts, toRat_min, Rat.cast_min,
       toRat_max, Rat.cast_max, toRat_pow, Rat.cast_pow] at hz
-
     have h₃ : min ((I.left.toRat ^ n) : ℝ) ((I.right.toRat ^ n) : ℝ) ∈ Image := by
       simp only [Image, Set.mem_image]
       rcases le_total ((I.left.toRat : ℝ)^n) ((I.right.toRat : ℝ)^n) with h | h
@@ -725,26 +705,24 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
         constructor
         · simp only [Domain, Set.mem_Icc, le_refl, and_true, I.isValid']
         · rfl
-
     have h : z ∈ Image := by
       apply Set.mem_of_subset_of_mem
-      apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
-      simp only [Set.mem_Icc, hz, and_self]
-
+      · apply IsPreconnected.Icc_subset h₂.isPreconnected h₃ h₄
+      · simp only [Set.mem_Icc, hz, and_self]
     rcases h with ⟨x, hx, hx'⟩
     use x, hx, hx'
 
+#check Rat.mkRat_one 1
 theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
   intro z hz
   change z ∈ DyadicInterval.powExact I n at hz
   unfold powExact at hz
   split at hz
   -- n = 0
-  · simp only [mem_iff_le_endpts] at hz
-    rw [← le_antisymm_iff] at hz
+  · simp only [mem_iff_le_endpts, ← le_antisymm_iff] at hz
     rw [← hz]
     use I.left.toRat, left_mem I
-    norm_cast
+    rw [pow_zero]; norm_cast
   -- n > 0
   · split at hz
     -- (n + 1) is even

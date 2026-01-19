@@ -6,6 +6,7 @@ import DyadicRealm.DyadicIntervals.Arithmetic
 set_option linter.style.commandStart false
 set_option linter.style.longLine false
 set_option linter.unusedVariables false
+set_option linter.style.emptyLine false
 
 /-!
 # Polynomial Bounds over Dyadic Intervals
@@ -289,7 +290,7 @@ theorem mvt_real_poly {n : ℕ} (p : RatPol n) (I : DyadicInterval) (x : ℝ) (h
           constructor
           · grind only
           · apply le_trans hξ.right.le; norm_cast
-            exact le_iff_toRat.mp I.midpoint_le_right
+            exact toRat_le_toRat_iff.mpr I.midpoint_le_right
         · grind only
 
       · have hfc : ContinuousOn (toRealPoly p).eval (Set.Icc I.midpoint.toRat x) := by
@@ -303,7 +304,7 @@ theorem mvt_real_poly {n : ℕ} (p : RatPol n) (I : DyadicInterval) (x : ℝ) (h
           rw [Set.mem_Ioo] at hξ
           constructor
           · apply le_trans _ hξ.left.le; norm_cast
-            exact le_iff_toRat.mp I.left_le_midpoint
+            exact toRat_le_toRat_iff.mpr I.left_le_midpoint
           · grind only
         · grind only
 
