@@ -34,29 +34,36 @@ def add : DyadicInterval :=
 instance : Add DyadicInterval := ⟨DyadicInterval.add⟩
 
 /-- The left endpoint of the sum of two dyadic intervals is the sum of their left endpoints -/
-@[simp, grind] lemma left_add_eq : (I + J).left = I.left + J.left := by rfl
+@[simp, grind =] lemma left_add_eq : (I + J).left = I.left + J.left := by rfl
 
 /-- The right endpoint of the sum of two dyadic intervals is the sum of their right endpoints -/
-@[simp, grind] lemma right_add_eq : (I + J).right = I.right + J.right := by rfl
+@[simp, grind =] lemma right_add_eq : (I + J).right = I.right + J.right := by rfl
 
-@[simp, grind]
+@[simp, grind =]
 theorem add_comm : I + J = J + I := by
   simp only [eq_iff_left_right, left_add_eq, right_add_eq, Dyadic.add_comm, and_self]
 
-@[simp, grind]
+@[simp, grind =]
 theorem add_assoc : (I + J) + K = I + (J + K) := by
   simp only [eq_iff_left_right, left_add_eq, right_add_eq, Dyadic.add_assoc, and_self]
 
-@[simp, grind]
-theorem zero_add : I + 0 = I := by
+@[simp, grind =]
+theorem add_zero : I + 0 = I := by
   rw [eq_iff_left_right, left_add_eq, right_add_eq]
   constructor
   · rw [left_coe_zero, Dyadic.add_zero]
   · rw [right_coe_zero, Dyadic.add_zero]
 
-@[simp, grind]
-theorem add_zero : 0 + I = I := by
-  rw [add_comm, zero_add]
+@[simp, grind =]
+theorem zero_add : 0 + I = I := by rw [add_comm, add_zero]
+
+@[simp, grind .]
+theorem add_right_cancel : I + J = K + J → I = K := by
+  intro h; simp only [add_comm, eq_iff_left_right, left_add_eq, right_add_eq] at *
+  grind only
+
+@[simp, grind .]
+theorem add_left_cancel : I + J = I + K → J = K := by grind only [add_comm, add_right_cancel]
 
 theorem add_sound : ∀ x ∈ I, ∀ y ∈ J, x + y ∈ (I + J) := by
   intro x hx y hy
@@ -123,22 +130,29 @@ def neg (I : DyadicInterval) : DyadicInterval :=
 
 instance : Neg DyadicInterval := ⟨DyadicInterval.neg⟩
 
-@[simp, grind] lemma neg_left : (- I).left = -I.right := by rfl
+@[simp, grind =] lemma neg_left : (- I).left = -I.right := by rfl
 
-@[simp, grind] lemma neg_right : (-I).right = -I.left := by rfl
+@[simp, grind =] lemma neg_right : (-I).right = -I.left := by rfl
+
+@[simp, grind =] theorem neg_neg : - (-I) = I := by
+  apply ext; simp only [toSet, neg_left, neg_right, toRat_neg, _root_.neg_neg]
+
+@[simp, grind =] theorem neg_add_rev : -(I + J) = -J + -I := by
+  simp only [add_comm, eq_iff_left_right, neg_left, right_add_eq, left_add_eq, neg_right]
+  grind only
 
 def sub : DyadicInterval := I + (-J)
 
 instance : Sub DyadicInterval where sub := DyadicInterval.sub
 
-@[simp, grind] lemma sub_eq_neg_add : I - J = I + (-J) := by rfl
+@[simp, grind =] lemma sub_eq_neg_add : I - J = I + (-J) := by rfl
 
 /-- The left endpoint of the difference of two dyadic intervals is the difference of their left and right endpoints respectively -/
-@[simp, grind] lemma left_sub : (I - J).left = I.left - J.right := by
+@[simp, grind =] lemma left_sub : (I - J).left = I.left - J.right := by
   simp only [sub_eq_neg_add, left_add_eq, neg_left, Dyadic.sub_eq_add_neg]
 
 /-- The right endpoint of the difference of two dyadic intervals is the difference of their right and left endpoints respectively -/
-@[simp, grind] lemma right_sub : (I - J).right = I.right - J.left := by
+@[simp, grind =] lemma right_sub : (I - J).right = I.right - J.left := by
   simp only [sub_eq_neg_add, right_add_eq, neg_right, Dyadic.sub_eq_add_neg]
 
 theorem neg_sound : ∀ x ∈ I, -x ∈ -I := by
@@ -171,7 +185,7 @@ theorem neg_sharp : ∀ z ∈ (-I), ∃ x ∈ I, -x = z := by
   constructor
   · rw [mem_iff_le_endpts]
     grind only [cases Or]
-  · simp only [neg_neg]
+  · simp only [_root_.neg_neg]
 
 theorem sub_sharp : ∀ z ∈ (I - J), ∃ x ∈ I, ∃ y ∈ J, x - y = z := by
   intro z hz
@@ -207,6 +221,23 @@ theorem sub_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) : I - J ⊆ A - B := by
 
 end Subtraction
 
+section ScalarMultiplication
+open Dyadic DyadicInterval
+
+def nsmul (n : ℕ) (I : DyadicInterval) : DyadicInterval :=
+  have h : n * I.left ≤ n * I.right := by
+    induction n with
+    | zero => grind only
+    | succ m ih => grind only [Dyadic.add_mul, I.isValid]
+  ⟨n * I.left, n * I.right, h⟩
+
+def zsmul (z : ℤ) (I : DyadicInterval) : DyadicInterval :=
+  match z with
+  | Int.ofNat n => nsmul n I
+  | Int.negSucc n => - (nsmul (n + 1) I)
+
+end ScalarMultiplication
+
 section Multiplication
 open Dyadic DyadicInterval
 variable (I J K : DyadicInterval){A B : DyadicInterval}(a : Dyadic)(n : ℕ)
@@ -221,10 +252,10 @@ def productEndpts : Finset Dyadic :=
   (I.right * J.left),
   (I.right * J.right)}
 
-@[simp, grind] lemma product_endpts_nonempty : (productEndpts I J).Nonempty := by
+@[simp, grind .] lemma product_endpts_nonempty : (productEndpts I J).Nonempty := by
   grind only [productEndpts, insert_nonempty]
 
-@[simp, grind] lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
+@[simp, grind =] lemma product_endpts_comm : productEndpts I J = productEndpts J I := by
   simp only [productEndpts, Dyadic.mul_comm]
   grind only [= Set.mem_singleton_iff, = mem_singleton, = insert_eq_of_mem, = mem_insert, cases Or]
 
@@ -236,16 +267,16 @@ def mul : DyadicInterval :=
 
 instance : Mul DyadicInterval := ⟨DyadicInterval.mul⟩
 
-@[simp, grind] lemma mul_left_endpt : (I * J).left =
+@[simp, grind =] lemma mul_left_endpt : (I * J).left =
   (productEndpts I J).min' (product_endpts_nonempty I J) := by rfl
 
-@[simp, grind] lemma mul_right_endpt : (I * J).right =
+@[simp, grind =] lemma mul_right_endpt : (I * J).right =
   (productEndpts I J).max' (product_endpts_nonempty I J) := by rfl
 
-@[simp, grind] lemma mul_left_mem_product_endpts : (I * J).left ∈ productEndpts I J := by
+@[simp, grind .] lemma mul_left_mem_product_endpts : (I * J).left ∈ productEndpts I J := by
   simp only [mul_left_endpt, min'_mem]
 
-@[simp, grind] lemma mul_right_mem_product_endpts : (I * J).right ∈ productEndpts I J := by
+@[simp, grind .] lemma mul_right_mem_product_endpts : (I * J).right ∈ productEndpts I J := by
   simp only [mul_right_endpt, max'_mem]
 
 lemma mul_left_le_left_mul' (y : ℝ) (hy : y ∈ J) : ↑(I * J).left.toRat ≤ ↑I.left.toRat * y := by
@@ -308,23 +339,23 @@ lemma right_mul_le_mul_right' (y : ℝ) (hy : y ∈ J) : ↑I.right.toRat * y �
       simp only [productEndpts, mem_insert, mem_singleton, true_or, or_true]
     exact le_trans (mul_le_mul_of_nonpos_left hy.left hr) h₁
 
-@[simp, grind]
+@[simp, grind =]
 lemma product_endpts_zero : productEndpts I 0 = {0} := by
   simp only [productEndpts, left_coe_zero, right_coe_zero]
   simp only [Dyadic.mul_zero, mem_singleton, insert_eq_of_mem]
 
-@[simp, grind]
+@[simp, grind =]
 lemma product_endpts_one : productEndpts I 1 = {I.left, I.right} := by
   have h₁ : left 1 = 1 := by rfl
   have h₂ : right 1 = 1 := by rfl
   simp only [productEndpts, h₁, h₂, Dyadic.mul_one]
   simp only [mem_singleton, insert_eq_of_mem, mem_insert, true_or]
 
-@[simp, grind]
+@[simp, grind =]
 theorem mul_comm : I * J = J * I := by
   simp only [eq_iff_left_right, mul_left_endpt, mul_right_endpt, product_endpts_comm, and_self]
 
-@[simp, grind]
+@[simp, grind =]
 theorem neg_mul : -I * J = - (I * J) := by
   simp only [eq_iff_left_right]
   constructor
@@ -348,22 +379,22 @@ theorem neg_mul : -I * J = - (I * J) := by
 -- neg_add_cancel is not true!
 -- [-1,1] - [-1,1] = [-2,2]
 
-@[simp, grind]
+@[simp, grind =]
 theorem mul_zero : I * 0 = 0 := by
   simp only [eq_iff_left_right, mul_left_endpt, product_endpts_zero, min'_singleton, left_coe_zero,
     mul_right_endpt, max'_singleton, right_coe_zero, and_self]
 
-@[simp, grind]
+@[simp, grind =]
 theorem zero_mul : 0 * I = 0 := by rw [mul_comm, mul_zero]
 
-@[simp, grind]
+@[simp, grind =]
 theorem mul_one : I * 1 = I := by
   simp only [eq_iff_left_right, mul_left_endpt, product_endpts_one, mul_right_endpt]
   constructor
   · simp only [min'_eq_iff, mem_insert, mem_singleton, true_or, forall_eq_or_imp, le_refl, forall_eq, true_and, I.isValid]
   · simp only [max'_eq_iff, mem_insert, mem_singleton, or_true, forall_eq_or_imp, forall_eq, le_refl, and_true, I.isValid]
 
-@[simp, grind]
+@[simp, grind =]
 theorem one_mul : 1 * I = I := by rw [mul_comm, mul_one]
 
 theorem mul_sound : ∀ x ∈ I, ∀ y ∈ J, x * y ∈ (I * J) := by
@@ -444,7 +475,7 @@ theorem mul_exact : (I * J : Set ℝ) = image2 (· * ·) I J := by
   · rintro _ ⟨x, hx, y, hy, rfl⟩
     exact mul_sound I J x hx y hy
 
-@[simp, grind]
+@[simp, grind =]
 theorem mul_assoc' : (I * J) * K = I * (J * K) := by
   ext z; simp only [mul_exact, image2_mul, mem_mul]; grind only
 
@@ -751,4 +782,42 @@ theorem pow_isotonic (hI : I ⊆ A) : I ^ n ⊆ A ^ n := by
   exact (subset_iff I A).mp hI
 
 end NatPower
+
+section typeclass_instances
+open Dyadic
+
+instance : AddCommMonoid DyadicInterval where
+  add_comm := add_comm
+  add_assoc := add_assoc
+  zero_add := zero_add
+  add_zero := add_zero
+  nsmul := nsmul
+  nsmul_zero := by intro I; simp only [nsmul]; norm_cast
+  nsmul_succ := by
+    intro n I
+    simp only [nsmul, add_comm, eq_iff_left_right, left_add_eq, right_add_eq]
+    grind only [Dyadic.add_mul]
+
+instance : InvolutiveNeg DyadicInterval := ⟨neg_neg⟩
+
+instance : SubNegMonoid DyadicInterval where
+  zsmul := zsmul
+  zsmul_zero' := by intro I; simp only [zsmul, nsmul]; norm_cast
+  zsmul_succ' := by
+    intro n I
+    simp only [zsmul, nsmul, add_comm, eq_iff_left_right, left_add_eq, right_add_eq]
+    grind only [Dyadic.add_mul]
+  zsmul_neg' := by intro n I; simp only [zsmul]
+
+instance : SubtractionCommMonoid DyadicInterval where
+  neg_add_rev := neg_add_rev
+  neg_eq_of_add := by
+    intro I J h
+    simp only [eq_iff_left_right, left_add_eq, left_coe_zero, right_add_eq, right_coe_zero,
+      neg_left, neg_right, toRat_eq, toRat_zero, toRat_add, toRat_neg, add_eq_zero_iff_neg_eq] at *
+    simp only [← toRat_neg, ← toRat_eq] at *
+    -- simp only [h, eq_comm, and_self]    ⊢ J.left = J.right
+    grind only [I.isValid, J.isValid]
+
+end typeclass_instances
 end DyadicInterval
