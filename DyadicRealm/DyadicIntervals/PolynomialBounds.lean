@@ -27,10 +27,10 @@ and provides functions to evaluate these polynomials over dyadic intervals with 
 - `interval_eval_sound` : Ensures that the evaluation of `toRealPoly` over a dyadic interval lies within the computed dyadic interval.
 -/
 
-namespace DyadicInterval
-open DyadicInterval Dyadic Vector Polynomial
-
 abbrev RatPol (n : ℕ) := Vector ℚ n -- degree ≤ n-1
+
+namespace RatPol
+open DyadicInterval Dyadic Vector Polynomial
 
 /-- Convert a rational polynomial represented as a vector to a `Polynomial ℚ`. -/
 noncomputable def toPoly {n : ℕ} (p : RatPol n) : Polynomial ℚ := Polynomial.ofFn n p.get
@@ -423,7 +423,7 @@ theorem interval_eval_sound (prec : ℤ) {n : ℕ} (p : RatPol n) (I : DyadicInt
         obtain ⟨a, k, ha, hk⟩ := countP_eq_one_exists_firstNonzero p heq
         exact hf a k ha hk
     · obtain ⟨c, hc, h⟩ := mvt_real_poly p I x hx
-      rw [h, add_comm]
+      rw [h, DyadicInterval.add_comm]
       apply add_sound
       · apply mul_sound
         · apply interval_eval_sound
@@ -443,4 +443,4 @@ theorem interval_eval_sound' (prec : ℤ) {n : ℕ} (p : RatPol n) (I : DyadicIn
 
 
 
-end DyadicInterval
+end RatPol

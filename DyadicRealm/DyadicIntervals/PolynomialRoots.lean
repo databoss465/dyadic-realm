@@ -44,7 +44,7 @@ as well as the Newton method for finding such roots.
 
 namespace DyadicInterval
 section PolynomialRoots
-open Dyadic DyadicInterval Polynomial Set
+open RatPol Dyadic DyadicInterval Polynomial Set
 variable (prec : ℤ) (I J: DyadicInterval) {n : ℕ} (p : RatPol n)
 
 def HasRoot := ∃ x ∈ I, (toRealPoly p).eval x = 0
@@ -218,12 +218,12 @@ theorem eval_endpts_of_has_no_root
 end PolynomialRoots
 
 section NewtonMethod
-open Dyadic DyadicInterval Polynomial Set
+open RatPol Dyadic DyadicInterval Polynomial Set
 variable (prec : ℤ) (I J: DyadicInterval) {n : ℕ} (p : RatPol n)
 
 -- N(I) := I.m - p(m)/p'(I)
 def Newton := I.midpoint - divWithPrec prec (evalWithPrec prec p I.midpoint.toRat)
-  (I.intervalEvalWithPrec prec (deriv p))
+  (intervalEvalWithPrec prec (deriv p) I)
 
 theorem mem_newton (h : ZeroFree (intervalEvalWithPrec prec (deriv p) I)) : ∀ c ∈ I,
   ↑I.midpoint.toRat - eval (↑I.midpoint.toRat) (toRealPoly p) / eval c (toRealPoly (deriv p)) ∈ (I.Newton prec p):= by
@@ -325,7 +325,7 @@ theorem newton_disjoint_of_has_no_root (h : ZeroFree (intervalEvalWithPrec prec 
 end NewtonMethod
 
 section IsolationAlgorithms
-open Dyadic DyadicInterval Polynomial Set
+open RatPol Dyadic DyadicInterval Polynomial Set
 
 -- def IsolateRoots_ivt (I : DyadicInterval) {n : ℕ} (p : RatPol n)
 --   (prec : ℤ)(max_depth : ℕ) (min_width: Dyadic) : List DyadicInterval × List DyadicInterval :=
