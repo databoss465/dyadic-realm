@@ -476,7 +476,7 @@ theorem mul_exact : (I * J : Set ℝ) = image2 (· * ·) I J := by
     exact mul_sound I J x hx y hy
 
 @[simp, grind =]
-theorem mul_assoc' : (I * J) * K = I * (J * K) := by
+theorem mul_assoc : (I * J) * K = I * (J * K) := by
   ext z; simp only [mul_exact, image2_mul, mem_mul]; grind only
 
 theorem left_subdistrib : I * (J + K) ⊆ I * J + I * K := by
@@ -818,6 +818,22 @@ instance : SubtractionCommMonoid DyadicInterval where
     simp only [← toRat_neg, ← toRat_eq] at *
     -- simp only [h, eq_comm, and_self]    ⊢ J.left = J.right
     grind only [I.isValid, J.isValid]
+
+instance : AddLeftCancelSemigroup DyadicInterval where
+ add_left_cancel := add_left_cancel
+
+instance : AddRightCancelSemigroup DyadicInterval where
+  add_right_cancel := by
+    intro J; simp only [IsAddRightRegular, Function.Injective]
+    intro I K; grind only [add_right_cancel]
+
+instance : CommSemigroup DyadicInterval where
+  mul_comm := mul_comm
+  mul_assoc := mul_assoc
+
+instance : MulOneClass DyadicInterval where
+  one_mul := one_mul
+  mul_one := mul_one
 
 end typeclass_instances
 end DyadicInterval

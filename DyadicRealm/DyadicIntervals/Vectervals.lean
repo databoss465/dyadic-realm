@@ -10,10 +10,10 @@ set_option linter.unusedVariables false
 
 namespace Vector
 
-  theorem get_pop {α : Type} {n : ℕ} (v : Vector α (n + 1))(i : Fin n) :
-    (v.pop).get i = v.get i.castSucc := by
-    simp only [get, Nat.add_one_sub_one, pop, Fin.val_cast, Array.getElem_pop, getElem_toArray,
-      Fin.val_castSucc]
+theorem get_pop {α : Type} {n : ℕ} (v : Vector α (n + 1))(i : Fin n) :
+  (v.pop).get i = v.get i.castSucc := by
+  simp only [get, Nat.add_one_sub_one, pop, Fin.val_cast, Array.getElem_pop, getElem_toArray,
+    Fin.val_castSucc]
 
 end Vector
 
@@ -25,6 +25,24 @@ section VectervalStructural
 open Dyadic DyadicInterval Set Vector
 variable {n : ℕ} (X Y : Vecterval n)
 
+def zero : Vecterval n := replicate _ 0
+instance : Zero (Vecterval n) := ⟨zero⟩
+
+def one : Vecterval n := replicate _ 1
+instance : One (Vecterval n) := ⟨one⟩
+
+def ofFn (f : Fin n → DyadicInterval) : Vecterval n := Vector.ofFn f
+
+@[simp, grind =]
+theorem get_ofFn (f : Fin n → DyadicInterval) (i : Fin n) :
+  (Vecterval.ofFn f).get i = f i := Vector.get_ofFn f i
+
+@[simp, grind =]
+theorem ofFn_get_eq_self : Vecterval.ofFn X.get = X := by
+  apply Vector.ext; intro i hi
+  simp only [Vecterval.ofFn, Vector.getElem_ofFn, get_eq_getElem]
+
+@[simp]
 theorem eq_empty {xs : Vecterval 0} : xs = #v[] := by simp only [Vector.eq_empty]
 
 def mem (x : Vector ℝ n) := ∀ i : Fin n, x.get i ∈ X.get i
@@ -47,17 +65,42 @@ def midpoint : Vector Dyadic n := X.map (fun I ↦ I.midpoint)
     `f i` lies in the interval `X.get i`. -/
 def toSet := Set.pi Set.univ (fun i => (X.get i).toSet)
 
+@[simp, grind .]
 theorem nonempty : X.toSet.Nonempty := by
   simp [toSet, Set.univ_pi_nonempty_iff, DyadicInterval.nonempty]
 
+@[simp, grind =]
 theorem mem_iff (x : Vector ℝ n) : x ∈ X ↔ ∀ i : Fin n, x.get i ∈ X.get i := by rfl
 
+@[simp, grind =]
 theorem mem_iff_get_mem_toSet (x : Vector ℝ n) : x ∈ X ↔ x.get ∈ X.toSet := by
   simp only [mem_iff, toSet, mem_pi, mem_univ, forall_const]; rfl
 
+@[simp, grind =]
 theorem mem_iff_le_endpts (x : Vector ℝ n) :  x ∈ X ↔ ∀ i : Fin n,
   (X.get i).left.toRat ≤ x.get i ∧ x.get i ≤ (X.get i).right.toRat := by
   simp only [mem_iff, DyadicInterval.mem_iff_le_endpts]
+
+def width : Vector Dyadic n := X.map (fun I ↦ I.width)
+
+def maxWidth {n : ℕ} (X : Vecterval n) : Dyadic :=
+  match n with
+  | 0 => 0
+  | m + 1 => max (X.back.width) (maxWidth X.pop)
+
+def maxWidthIdx {n : ℕ} (X : Vecterval (n + 1)) : Fin (n + 1) :=
+  match n with
+  | 0 => 0
+  | m + 1 =>
+    let j : Fin (m + 1) := maxWidthIdx (X.pop)
+    if maxWidth X.pop ≤ X.back.width then Fin.last (m + 1)
+    else j.castSucc
+
+def dotProduct : DyadicInterval := X.get ⬝ᵥ Y.get
+infixl:72 " ⬝ᵥ " => dotProduct
+
+@[simp, grind =]
+theorem dotProduct_comm : X ⬝ᵥ Y = Y ⬝ᵥ X := by simp only [dotProduct, _root_.dotProduct_comm]
 
 end VectervalStructural
 
@@ -69,8 +112,10 @@ def subset := ∀ i : Fin n, X.get i ⊆ Y.get i
 instance : HasSubset (Vecterval n) := ⟨Vecterval.subset⟩
 instance : HasSSubset (Vecterval n) where SSubset X Y := X ⊆ Y ∧ X ≠ Y
 
+@[simp, grind =]
 theorem subset_iff : X ⊆ Y ↔ ∀ i : Fin n, X.get i ⊆ Y.get i := by rfl
 
+@[simp, grind =]
 theorem subset_iff_toSet : X ⊆ Y ↔ X.toSet ⊆ Y.toSet := by
   constructor
   · grind only [subset_iff, DyadicInterval.subset_iff, toSet, pi_subset_pi_iff, mem_univ]
@@ -82,6 +127,7 @@ theorem subset_iff_toSet : X ⊆ Y ↔ X.toSet ⊆ Y.toSet := by
       exact (X.get i).isValid'
     grind only [subset_iff, DyadicInterval.subset_iff]
 
+@[simp, grind =]
 theorem subset_iff_endpts : X ⊆ Y ↔ ∀ i : Fin n, (Y.get i).left ≤ (X.get i).left ∧
   (X.get i).right ≤ (Y.get i).right := by
   simp only [subset_iff]; apply forall_congr'
@@ -99,8 +145,10 @@ def intersection {k : ℕ} (U V : Vecterval k) : Option (Vecterval k) :=
     | some z, some zs => zs.push z
 infixl:70 " ⊓ " => intersection
 
+@[simp, grind =]
 lemma inter_empty (X Y : Vecterval 0) : X ⊓ Y = some #v[] := by rfl
 
+@[simp, grind =]
 lemma inter_nonempty_eq_some {m : ℕ} (X Y Z : Vecterval (m + 1)) : X ⊓ Y = some Z ↔
   X.back ⊓ Y.back = some Z.back ∧ (X.pop) ⊓ (Y.pop) = Z.pop := by
   constructor
@@ -123,7 +171,7 @@ lemma inter_nonempty_eq_some {m : ℕ} (X Y Z : Vecterval (m + 1)) : X ⊓ Y = s
       simp only [Option.some.injEq] at *
       rw [←push_pop_back Z]; congr <;> grind only
 
-#check Fin.forall_fin_succ'
+@[simp, grind =]
 lemma inter_nonempty_eq_none  {m : ℕ} (X Y : Vecterval (m + 1)) : X ⊓ Y = none ↔
   X.back ⊓ Y.back = none ∨ intersection (X.pop) (Y.pop) = none := by
   constructor
@@ -132,6 +180,7 @@ lemma inter_nonempty_eq_none  {m : ℕ} (X Y : Vecterval (m + 1)) : X ⊓ Y = no
   · intro h; simp only [intersection]
     split <;> grind only
 
+@[simp, grind =]
 theorem inter_eq_none_iff : X ⊓ Y = none ↔ ∃ i, X.get i ⊓ Y.get i = none := by
   induction n with
   | zero =>
@@ -145,6 +194,7 @@ theorem inter_eq_none_iff : X ⊓ Y = none ↔ ∃ i, X.get i ⊓ Y.get i = none
     · grind only
     · norm_cast
 
+@[simp, grind =]
 theorem inter_eq_some_iff : X ⊓ Y = some Z ↔ ∀ i, X.get i ⊓ Y.get i = Z.get i := by
   induction n with
   | zero =>
@@ -157,18 +207,22 @@ theorem inter_eq_some_iff : X ⊓ Y = some Z ↔ ∀ i, X.get i ⊓ Y.get i = Z.
     rw [and_comm]; apply and_congr_left; intro h
     apply forall_congr'; simp only [get_pop, implies_true]
 
+@[simp, grind =]
 theorem inter_self : X ⊓ X = some X := by
   grind only [inter_eq_some_iff, DyadicInterval.inter_self]
 
 -- theorem inter_comm : X ⊓ Y = Y ⊓ X := by
 --   grind only [intersection, inter_list_comm]
 
+@[simp, grind →]
 theorem inter_subset (h: Y ⊆ X) : X ⊓ Y = some Y := by
   grind only [subset_iff, inter_eq_some_iff, DyadicInterval.inter_subset]
 
+@[simp, grind →]
 theorem inter_subset_left (h: X ⊓ Y = some Z) : Z ⊆ X := by
   grind only [subset_iff, inter_eq_some_iff, DyadicInterval.inter_subset_left]
 
+@[simp, grind →]
 theorem inter_subset_right (h: X ⊓ Y = some Z) : Z ⊆ Y := by
   grind only [subset_iff, inter_eq_some_iff, DyadicInterval.inter_subset_right]
 
@@ -176,6 +230,7 @@ theorem inter_subset_right (h: X ⊓ Y = some Z) : Z ⊆ Y := by
 -- theorem inter_optimal {V : Vecterval n} (hX : V ⊆ X) (hY : V ⊆ Y) : ∃ Z, X ⊓ Y = some Z ∧ V ⊆ Z := by
 --   sorry
 
+@[simp, grind →]
 theorem inter_toSet_some (h: X ⊓ Y = some Z) : X.toSet ∩ Y.toSet = Z.toSet := by
   ext f; constructor
   · rw [mem_inter_iff]
@@ -195,6 +250,7 @@ theorem inter_toSet_some (h: X ⊓ Y = some Z) : X.toSet ∩ Y.toSet = Z.toSet :
       have h := DyadicInterval.inter_toSet_some _ _ _ (h i)
       grind only [Set.mem_of_mem_inter_right]
 
+@[simp, grind →]
 theorem inter_toSet_none (h: X ⊓ Y = none) : X.toSet ∩ Y.toSet = ∅ := by
   by_contra; simp only [← nonempty_iff_ne_empty, nonempty_def, mem_inter_iff] at this
   obtain ⟨f, hfx, hfy⟩ := this
@@ -213,15 +269,34 @@ def split_along (m : Fin n) : Vecterval n × Vecterval n :=
   let right_vec := X.set m right_half
   ⟨left_vec, right_vec⟩
 
+@[simp, grind .]
 theorem left_split_subset (m : Fin n) : (X.split_along m).1 ⊆ X := by
-  sorry
+  simp only [subset_iff, split_along]; intro i
+  simp only [get_eq_getElem, getElem_set]
+  grind only [DyadicInterval.left_split_subset, DyadicInterval.subset_refl]
 
+
+@[simp, grind .]
 theorem right_split_subset (m : Fin n) : (X.split_along m).2 ⊆ X := by
-  sorry
+  simp only [subset_iff, split_along]; intro i
+  simp only [get_eq_getElem, getElem_set]
+  grind only [DyadicInterval.right_split_subset, DyadicInterval.subset_refl]
 
-theorem mem_split_iff (m : Fin n) : ∀ x ∈ X, x ∈ (X.split_along m).1 ∨
+@[simp, grind .]
+theorem mem_split (m : Fin n) : ∀ x ∈ X, x ∈ (X.split_along m).1 ∨
   x ∈ (X.split_along m).2 := by
-    sorry
+  intro x hx; rw [mem_iff] at hx
+  rcases DyadicInterval.mem_split _ _ (hx m) with h | h
+  · left; simp only [mem_iff, split_along]
+    simp only [get_eq_getElem, getElem_set] at *
+    intro i; split_ifs with h'
+    · simp only [← h', h]
+    · simp only [hx]
+  · right; simp only [mem_iff, split_along]
+    simp only [get_eq_getElem, getElem_set] at *
+    intro i; split_ifs with h'
+    · simp only [← h', h]
+    · simp only [hx]
 
 end VectervalTopological
 end Vecterval
@@ -230,14 +305,18 @@ end Vecterval
 open DyadicInterval
 def I₁ := ofRatWithPrec 5 ((7: ℚ)/9)
 def I₂ := ofRatWithPrec 5 ((1: ℚ)/3)
-def J₁ := ofRatWithPrec 4 ((2: ℚ)/5)
-def J₂ := ofRatWithPrec 4 ((3: ℚ)/7)
+def J₁ := ofRatWithPrec 6 ((2: ℚ)/5)
+def J₂ := ofRatWithPrec 6 ((3: ℚ)/7)
 -- def J₁ := ofRatWithPrec 5 ((7: ℚ)/9)
 -- def J₂ := ofRatWithPrec 5 ((1: ℚ)/3)
 def X : Vecterval 2 := ⟨#[I₁, I₂], by simp⟩
 def Y : Vecterval 2 := ⟨#[J₁, J₂], by simp⟩
+def Z : Vecterval 0 := #v[]
 #eval X
 #eval Y
+#eval X ⬝ᵥ Y
+#eval (1 : Vecterval 2) ⬝ᵥ X
+#eval (I₁ * J₁) + (I₂ * J₂)
 #eval (X + Y)
 #eval (X - Y)
 #eval X.split_along 0

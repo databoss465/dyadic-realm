@@ -577,7 +577,7 @@ theorem split_inter : I.split.1 ⊓ I.split.2 = some ↑I.midpoint := by
     inf_of_le_left, le_refl, ↓reduceDIte, ofDyadic]
 
 /-- Any point in the interval is in one of the splits -/
-theorem mem_split_iff : ∀ x ∈ I, x ∈ I.split.1 ∨ x ∈ I.split.2 := by
+theorem mem_split : ∀ x ∈ I, x ∈ I.split.1 ∨ x ∈ I.split.2 := by
   intro x hx
   simp only [mem_iff_le_endpts] at *
   rcases le_total x ↑I.midpoint.toRat with h₁ | h₂
