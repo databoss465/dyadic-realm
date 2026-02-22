@@ -282,7 +282,7 @@ theorem neg_deriv_of_newton_subset_of_has_root (h : intervalEvalWithPrec prec (d
     rcases le_total 0 (I.MidEval' p) with h₀ | h₀
     · refine ⟨?_, le_trans h₀ this.right⟩
       obtain ⟨c, hc, hc'⟩ := mvt_real_poly p I _ I.right_mem; simp only [hc']
-      rw [← neg_neg (eval c (toRealPoly (deriv p))), _root_.neg_mul]
+      rw [← _root_.neg_neg (eval c (toRealPoly (deriv p))), _root_.neg_mul]
       rw [← le_neg_iff_add_nonpos_right, neg_le_neg_iff, _root_.mul_comm, ← div_le_iff₀ (h₁ _ hc), div_neg]
       rw [le_sub_iff_add_le, _root_.add_comm, ← sub_eq_add_neg (I.midpoint.toRat : ℝ)]
       have h'' := (mem_newton prec I p (neg_zerofree _ h) c hc).right
@@ -291,7 +291,7 @@ theorem neg_deriv_of_newton_subset_of_has_root (h : intervalEvalWithPrec prec (d
 
     · refine ⟨le_trans this.left h₀, ?_⟩
       obtain ⟨c, hc, hc'⟩ := mvt_real_poly p I _ I.left_mem; simp only [hc']
-      rw [← neg_neg (eval c (toRealPoly (deriv p))), _root_.neg_mul]
+      rw [← _root_.neg_neg (eval c (toRealPoly (deriv p))), _root_.neg_mul]
       rw [← neg_le_iff_add_nonneg, neg_le_neg_iff, ← le_div_iff₀' (h₁ _ hc), div_neg, sub_le_iff_le_add]
       rw [_root_.add_comm, ← sub_eq_add_neg (I.midpoint.toRat : ℝ)]
       have h'' := (mem_newton prec I p (neg_zerofree _ h) c hc).left
@@ -356,10 +356,11 @@ def IsolateRoots (I : DyadicInterval) {n : ℕ} (p : RatPol n)
     let result_left := IsolateRoots L p prec (max_depth - 1) min_width
     let result_right := IsolateRoots R p prec (max_depth - 1) min_width
     merge_results result_left result_right
+-- termination_by max_depth
 
 theorem isolate_roots_empty_of_has_no_roots (I : DyadicInterval) {n : ℕ} (p : RatPol n) (prec : ℤ) (max_depth : ℕ)
-  (min_width: Dyadic) (h : IsolateRoots I p prec max_depth min_width = ([], [])) : I.HasNoRoot p := by
-  unfold IsolateRoots at h
+  (min_width: Dyadic) : IsolateRoots I p prec max_depth min_width = ([], []) → I.HasNoRoot p := by
+  intro h; rw [IsolateRoots] at h
   split_ifs at h with hzf hderiv hmax hmax
   · grind only [no_root_of_eval_zerofree]
   · simp only at h; split at h
@@ -393,7 +394,7 @@ theorem isolate_roots_empty_of_has_no_roots (I : DyadicInterval) {n : ℕ} (p : 
     have h₁ : I.split.1.HasNoRoot p := by apply isolate_roots_empty_of_has_no_roots; exact h₁
     have h₂ : I.split.2.HasNoRoot p := by apply isolate_roots_empty_of_has_no_roots; exact h₂
     unfold HasNoRoot at *; intro x hx
-    grind only [mem_split_iff]
+    grind only [mem_split]
 
 theorem isolate_roots_of_has_unique_root (I : DyadicInterval) {n : ℕ} (p : RatPol n) (prec : ℤ) (max_depth : ℕ)
   (min_width: Dyadic) : ∀ J ∈ (IsolateRoots I p prec max_depth min_width).1, J.HasUniqueRoot p := by

@@ -37,10 +37,13 @@ def ofFn (f : Fin n → DyadicInterval) : Vecterval n := Vector.ofFn f
 theorem get_ofFn (f : Fin n → DyadicInterval) (i : Fin n) :
   (Vecterval.ofFn f).get i = f i := Vector.get_ofFn f i
 
+theorem getElem_ofFn (f : Fin n → DyadicInterval) (i : ℕ) (h : i < n):
+  (Vecterval.ofFn f)[i] = f ⟨i, h⟩ := by simp only [Vecterval.ofFn, Vector.getElem_ofFn]
+
 @[simp, grind =]
 theorem ofFn_get_eq_self : Vecterval.ofFn X.get = X := by
   apply Vector.ext; intro i hi
-  simp only [Vecterval.ofFn, Vector.getElem_ofFn, get_eq_getElem]
+  simp only [Vecterval.getElem_ofFn, get_eq_getElem]
 
 @[simp]
 theorem eq_empty {xs : Vecterval 0} : xs = #v[] := by simp only [Vector.eq_empty]
@@ -81,6 +84,19 @@ theorem mem_iff_le_endpts (x : Vector ℝ n) :  x ∈ X ↔ ∀ i : Fin n,
   (X.get i).left.toRat ≤ x.get i ∧ x.get i ≤ (X.get i).right.toRat := by
   simp only [mem_iff, DyadicInterval.mem_iff_le_endpts]
 
+theorem mem_pop_of_mem (X : Vecterval (n + 1))(x : Vector ℝ (n + 1)) :  x ∈ X → x.pop ∈ X.pop := by
+  intro hx
+  simp only [Vecterval.mem_iff, get_eq_getElem, getElem_pop] at *
+  simp only [Nat.add_one_sub_one]; intro i
+  exact hx (Fin.castSucc i)
+
+theorem mem_back_of_mem (X : Vecterval (n + 1))(x : Vector ℝ (n + 1)) :  x ∈ X → x.back ∈ X.back := by
+  intro hx
+  simp only [back_eq_getElem, add_tsub_cancel_right]
+  simp only [Vecterval.mem_iff, get_eq_getElem] at hx
+  specialize hx ⟨n, by grind only⟩
+  grind only
+
 def width : Vector Dyadic n := X.map (fun I ↦ I.width)
 
 def maxWidth {n : ℕ} (X : Vecterval n) : Dyadic :=
@@ -95,6 +111,9 @@ def maxWidthIdx {n : ℕ} (X : Vecterval (n + 1)) : Fin (n + 1) :=
     let j : Fin (m + 1) := maxWidthIdx (X.pop)
     if maxWidth X.pop ≤ X.back.width then Fin.last (m + 1)
     else j.castSucc
+
+def abs {n : ℕ} (X : Vecterval n) : Dyadic :=
+  (X.map (fun I ↦ I.abs)).sum
 
 def dotProduct : DyadicInterval := X.get ⬝ᵥ Y.get
 infixl:72 " ⬝ᵥ " => dotProduct
@@ -301,6 +320,70 @@ theorem mem_split (m : Fin n) : ∀ x ∈ X, x ∈ (X.split_along m).1 ∨
 end VectervalTopological
 end Vecterval
 
+abbrev Matrival (m n: ℕ) := Vector (Vecterval n) m
+
+namespace Matrival
+section IntervalMatrix
+open Dyadic DyadicInterval Set Vector
+variable {l m n : ℕ} (A : Matrival m n)
+
+def get (A : Matrival m n) (i : Fin m) (j : Fin n) : DyadicInterval := (Vector.get A i).get j
+#check A.get
+#check (A.get : Matrix (Fin m) (Fin n) DyadicInterval)
+
+theorem get_eq_getElem (A : Matrival m n) (i : Fin m) (j : Fin n) : A.get i j = A[(i : ℕ)][(j : ℕ)] := rfl
+
+def ofFn (f : Fin m → Fin n → DyadicInterval) : Matrival m n := Vector.ofFn (fun i ↦ Vecterval.ofFn (f i))
+
+theorem get_ofFn (f : Fin m → Fin n → DyadicInterval) (i : Fin m) (j : Fin n) :
+  (Matrival.ofFn f).get i j = f i j := by
+  simp only [Matrival.ofFn, Matrival.get, Vector.get_ofFn, Vecterval.get_ofFn]
+
+theorem getElem_ofFn (f : Fin m → Fin n → DyadicInterval) (i j : ℕ) (h : i < m)
+  (h' : j < n) : (Matrival.ofFn f)[i][j] = f ⟨i, h⟩ ⟨j, h'⟩ := by
+  simp only [Matrival.ofFn, Vector.getElem_ofFn, Vecterval.getElem_ofFn]
+
+theorem ofFn_get_eq_self : Matrival.ofFn A.get = A := by
+  apply Vector.ext; intro i hi
+  apply Vector.ext; intro j hj
+  simp only [getElem_ofFn, get_eq_getElem]
+
+def mul (A : Matrival l m) (B : Matrival m n) : Matrival l n :=
+  let A' : Matrix (Fin l) (Fin m) DyadicInterval:= A.get
+  let B' : Matrix (Fin m) (Fin n) DyadicInterval:= B.get
+  Matrival.ofFn (A' * B')
+
+instance : HMul (Matrival l m) (Matrival m n) (Matrival l n) := ⟨mul⟩
+
+def mulVec (A : Matrival m n) (X : Vecterval n) : Vecterval m :=
+  let A' : Matrix (Fin m) (Fin n) DyadicInterval:= A.get
+  Vecterval.ofFn (A'.mulVecᵣ X.get )
+
+instance : HMul (Matrival m n) (Vecterval n) (Vecterval m) := ⟨mulVec⟩
+
+def vecMul (X : Vecterval m) (A : Matrival m n) : Vecterval n :=
+  let A' : Matrix (Fin m) (Fin n) DyadicInterval:= A.get
+  Vecterval.ofFn (A'.vecMulᵣ X.get)
+
+instance : HMul (Vecterval m) (Matrival m n) (Vecterval n) := ⟨vecMul⟩
+
+def rat_midpoint : Matrix (Fin m) (Fin n) ℚ := fun i j ↦ ↑(A.get i j).midpoint.toRat
+
+/-- Appriximate Moore-Penrose Pseudoinverse for Rectangular matrices -/
+def ApproxInvWithPrec (prec : ℤ) (A : Matrival m n): Matrival n m :=
+  let B := (A.rat_midpoint).transpose * (A.rat_midpoint)
+  let B' := ((1/B.det) • B.adjugate) * (A.rat_midpoint.transpose)
+  Matrival.ofFn (fun i j ↦ ofRatWithPrec prec (B' i j))
+
+def norm (A : Matrival m n) : Dyadic :=
+  let M := A.map (fun X ↦ X.abs)
+  match M.toList with
+  | [] => 0
+  | x :: xs => (x :: xs).max (by grind only)
+
+end IntervalMatrix
+end Matrival
+
 
 open DyadicInterval
 def I₁ := ofRatWithPrec 5 ((7: ℚ)/9)
@@ -312,7 +395,7 @@ def J₂ := ofRatWithPrec 6 ((3: ℚ)/7)
 def X : Vecterval 2 := ⟨#[I₁, I₂], by simp⟩
 def Y : Vecterval 2 := ⟨#[J₁, J₂], by simp⟩
 def Z : Vecterval 0 := #v[]
-#eval X
+#eval X[0]
 #eval Y
 #eval X ⬝ᵥ Y
 #eval (1 : Vecterval 2) ⬝ᵥ X

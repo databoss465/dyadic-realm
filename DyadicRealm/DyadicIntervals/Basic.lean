@@ -35,6 +35,9 @@ lt_iff_le_not_ge := by
   intro a b h
   apply Std.le_of_lt h
 
+instance : HSMul ℕ Dyadic Dyadic := ⟨fun n x ↦ n * x⟩
+instance : HSMul ℤ Dyadic Dyadic := ⟨fun z x ↦ z * x⟩
+
 namespace Dyadic
 section DyadicAddendum
 open Dyadic Finset
@@ -44,6 +47,18 @@ def format (d : Dyadic) : String :=
     toString (d.toRat).num  -- Print "5" instead of "5/1"
   else
     s!"{(d.toRat).num}/{(d.toRat).den}"
+
+theorem toRat_one : toRat 1 = 1 := by
+  norm_cast
+
+theorem toRat_nsmul (n : ℕ) (x : Dyadic) : toRat (n • x) = n • x.toRat := by
+  change (n * x).toRat = n • x.toRat
+  simp only [toRat_mul, toRat_natCast, nsmul_eq_mul]
+
+theorem toRat_zsmul (z : ℤ) (x : Dyadic) : toRat (z • x) = z • x.toRat := by
+  change (z * x).toRat = z • x.toRat
+  simp only [toRat_mul, toRat_intCast, zsmul_eq_mul]
+
 
 -- toRat_ofOdd_eq_mul_two_pow : toRat (.ofOdd n k hn) = n * 2 ^ (-k)
 theorem shiftRight_toRat (a : Dyadic) (i : Int) :
@@ -130,8 +145,14 @@ lemma toRat_min {a b : Dyadic} : (min a b).toRat = min a.toRat b.toRat := by
   · rw [min_eq_right hb, min_eq_right]
     rw [toRat_le_toRat_iff]; exact hb
 
+instance : CommRing Dyadic := Function.Injective.commRing toRat
+  (by intro a b h; grind only [toRat_inj]) -- Injective Dyadic.toRat_inj
+  toRat_zero toRat_one toRat_add toRat_mul toRat_neg toRat_sub
+  toRat_nsmul toRat_zsmul toRat_pow toRat_natCast toRat_intCast
+
 end DyadicAddendum
 end Dyadic
+
 
 namespace Rat
 section RatAddendum
@@ -166,7 +187,7 @@ section DI_Structural
 open Dyadic
 variable (I J K : DyadicInterval)(a : Dyadic)(n : ℕ)
 
-@[simp, grind .] theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := by
+@[grind .] theorem eq_iff_left_right : I = J ↔ I.left = J.left ∧ I.right = J.right := by
   constructor
   · grind only
   · intro h; cases I; cases J
@@ -221,11 +242,11 @@ instance : Coe DyadicInterval (Set ℝ) := ⟨toSet⟩
 def mem (x : ℝ) : Prop := x ∈ (I : Set ℝ)
 instance : Membership ℝ DyadicInterval where mem := DyadicInterval.mem
 
-@[simp, grind .]
+@[grind .]
 theorem mem_iff_mem_Icc : ∀ x : ℝ, x ∈ I ↔ x ∈ Set.Icc (I.left.toRat : ℝ) (I.right.toRat : ℝ) := by
   intro x; rfl
 
-@[simp, grind .]
+@[grind .]
 theorem mem_iff_le_endpts : ∀ x : ℝ, x ∈ I ↔ I.left.toRat ≤ x ∧ x ≤ I.right.toRat := by intro x; rfl
 
 @[simp, grind .] lemma left_mem : ↑I.left.toRat ∈ I := by
@@ -375,6 +396,8 @@ def midpoint : Dyadic := half (I.left + I.right)
 @[simp, grind .] theorem midpoint_mem : ↑I.midpoint.toRat ∈ I := by
   simp only [mem_iff_mem_Icc, Set.mem_Icc, Rat.cast_le]
   grind only [left_le_midpoint, midpoint_le_right, ← toRat_le_toRat_iff]
+
+def abs : Dyadic := max |I.left| |I.right|
 
 end DI_Structural
 
