@@ -336,10 +336,6 @@ open RatPol Dyadic DyadicInterval Polynomial Set
 --   else
 --   sorry
 
-/-- Merges the results of two IsolateRoots calls -/
-def merge_results (L R : List DyadicInterval × List DyadicInterval) : List DyadicInterval × List DyadicInterval :=
-  (L.1 ++ R.1, L.2 ++ R.2)
-
 def IsolateRoots (I : DyadicInterval) {n : ℕ} (p : RatPol n)
   (prec : ℤ)(max_depth : ℕ) (min_width: Dyadic) : List DyadicInterval × List DyadicInterval :=
   if ZeroFree (intervalEvalWithPrec prec p I) then ([], []) -- I.HasNoRoot p
@@ -353,9 +349,10 @@ def IsolateRoots (I : DyadicInterval) {n : ℕ} (p : RatPol n)
         else IsolateRoots J p prec (max_depth - 1) min_width
     else if max_depth = 0 then ([], [I]) -- Unknown : Max Recursion Depth reached
     else let (L, R) := I.split
-    let result_left := IsolateRoots L p prec (max_depth - 1) min_width
-    let result_right := IsolateRoots R p prec (max_depth - 1) min_width
-    merge_results result_left result_right
+    let rL := IsolateRoots L p prec (max_depth - 1) min_width
+    let rR := IsolateRoots R p prec (max_depth - 1) min_width
+    (rL.1 ++ rR.1, rL.2 ++ rR.2)
+
 -- termination_by max_depth
 
 theorem isolate_roots_empty_of_has_no_roots (I : DyadicInterval) {n : ℕ} (p : RatPol n) (prec : ℤ) (max_depth : ℕ)
@@ -388,7 +385,7 @@ theorem isolate_roots_empty_of_has_no_roots (I : DyadicInterval) {n : ℕ} (p : 
 
         grind only [hasNoRoot_iff_not_hasRoot]
   · exfalso; grind only
-  · simp only [merge_results, Prod.mk.injEq, List.append_eq_nil_iff] at h
+  · simp only [Prod.mk.injEq, List.append_eq_nil_iff] at h
     have h₁ : I.split.1.IsolateRoots p prec (max_depth - 1) min_width = ([], []) := by grind only
     have h₂ : I.split.2.IsolateRoots p prec (max_depth - 1) min_width = ([], []) := by grind only
     have h₁ : I.split.1.HasNoRoot p := by apply isolate_roots_empty_of_has_no_roots; exact h₁
@@ -431,7 +428,7 @@ theorem isolate_roots_of_has_unique_root (I : DyadicInterval) {n : ℕ} (p : Rat
         · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
         · grind only
     · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
-    · grind only [merge_results, add_tsub_cancel_right, List.mem_append]
+    · grind only [add_tsub_cancel_right, List.mem_append]
 
 end IsolationAlgorithms
 end DyadicInterval

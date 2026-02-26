@@ -820,8 +820,8 @@ instance : MulOneClass DyadicInterval where
 end typeclass_instances
 end DyadicInterval
 
-open DyadicInterval
-def I := ofRatWithPrec 1 ((3: ℚ)/9)
-def J := ofRatWithPrec 4 ((4 : ℚ)/7)
-#eval I - J
-#eval (I - J).abs
+-- open DyadicInterval
+-- def I := ofRatWithPrec 1 ((3: ℚ)/9)
+-- def J := ofRatWithPrec 4 ((4 : ℚ)/7)
+-- #eval I - J
+-- #eval (I - J).abs

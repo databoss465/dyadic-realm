@@ -482,10 +482,10 @@ theorem div_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) :
 
 end Division
 
-open DyadicInterval
-def A : DyadicInterval := ⟨(4 : ℚ).toDyadic 1, (5 : ℚ).toDyadic 1, by rfl⟩
-def B : DyadicInterval := ⟨(1 : ℚ).toDyadic 1, (1 : ℚ).toDyadic 1, by rfl⟩
-#check neg_neg (2 : ℝ)
-#eval! A
-#eval! B
-#eval! divWithPrec 4 A B
+-- open DyadicInterval
+-- def A : DyadicInterval := ⟨(4 : ℚ).toDyadic 1, (5 : ℚ).toDyadic 1, by rfl⟩
+-- def B : DyadicInterval := ⟨(1 : ℚ).toDyadic 1, (1 : ℚ).toDyadic 1, by rfl⟩
+-- #check neg_neg (2 : ℝ)
+-- #eval! A
+-- #eval! B
+-- #eval! divWithPrec 4 A B
