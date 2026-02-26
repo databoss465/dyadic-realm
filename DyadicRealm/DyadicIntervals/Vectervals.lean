@@ -28,8 +28,16 @@ variable {n : ℕ} (X Y : Vecterval n)
 def zero : Vecterval n := replicate _ 0
 instance : Zero (Vecterval n) := ⟨zero⟩
 
+lemma get_zero (i : Fin n): (0 : Vecterval n).get i = 0 := by
+  change Vector.get (replicate n 0) i = 0
+  simp only [get_replicate]
+
 def one : Vecterval n := replicate _ 1
 instance : One (Vecterval n) := ⟨one⟩
+
+lemma get_one (i : Fin n) : (1 : Vecterval n).get i = 1 := by
+  change Vector.get (replicate n 1) i = 1
+  simp only [get_replicate]
 
 def ofFn (f : Fin n → DyadicInterval) : Vecterval n := Vector.ofFn f
 
@@ -121,6 +129,50 @@ infixl:72 " ⬝ᵥ " => dotProduct
 @[simp, grind =]
 theorem dotProduct_comm : X ⬝ᵥ Y = Y ⬝ᵥ X := by simp only [dotProduct, _root_.dotProduct_comm]
 
+@[grind .]
+def lt : Prop := ∀ i, X.get i < Y.get i
+instance : LT (Vecterval n) := ⟨Vecterval.lt⟩
+
+@[simp, grind .] theorem lt_iff : X < Y ↔ ∀ i, X.get i < Y.get i := by rfl
+
+class ZeroFree : Prop where p : ∃ i, (X.get i).ZeroFree
+instance : Decidable (ZeroFree X) :=
+  if h : ∃ i, (X.get i).ZeroFree then isTrue ⟨h⟩
+  else isFalse (fun h_class => h h_class.p)
+
+theorem zerofree_iff : ZeroFree X ↔ ∃ i, (X.get i).ZeroFree := by
+  constructor <;> intro h
+  · exact h.p
+  · exact ⟨h⟩
+
+theorem zerofree_iff_not_mem_zero : ZeroFree X ↔ 0 ∉ X := by
+  simp only [zerofree_iff, DyadicInterval.zerofree_iff_not_mem_zero]
+  simp only [mem_iff, not_forall]
+  change (∃ i, 0 ∉ Vector.get X i) ↔ ∃ x, Vector.get (replicate n (0 : ℝ)) x ∉ Vector.get X x
+  simp only [get_replicate]
+
+theorem mem_zerofree_neq_zero : ZeroFree X → ∀ x ∈ X, x ≠ 0 := by
+  grind only [zerofree_iff_not_mem_zero]
+
+class HasZero : Prop where p : ∀ i, (X.get i).HasZero
+instance : Decidable (HasZero X) :=
+  if h : ∀ i, (X.get i).HasZero then isTrue ⟨h⟩
+  else isFalse (fun h_class => h h_class.p)
+
+theorem haszero_iff : HasZero X ↔ ∀ i, (X.get i).HasZero := by
+  constructor <;> intro h
+  · exact h.p
+  · exact ⟨h⟩
+
+theorem zerofree_iff_not_has_zero : ZeroFree X ↔ ¬ HasZero X := by
+  grind only [zerofree_iff, haszero_iff, = zerofree_iff_not_haszero, haszero_or_zerofree, #b3c7,
+    #cd2c, #3f47, #9f13]
+
+theorem has_zero_iff_not_zerofree : HasZero X ↔ ¬ ZeroFree X := by grind only [zerofree_iff_not_has_zero]
+
+theorem haszero_iff_mem_zero : HasZero X ↔ 0 ∈ X := by
+  grind only [has_zero_iff_not_zerofree, zerofree_iff_not_mem_zero]
+
 end VectervalStructural
 
 section VectervalTopological
@@ -151,6 +203,12 @@ theorem subset_iff_endpts : X ⊆ Y ↔ ∀ i : Fin n, (Y.get i).left ≤ (X.get
   (X.get i).right ≤ (Y.get i).right := by
   simp only [subset_iff]; apply forall_congr'
   intro i; rw [DyadicInterval.subset_iff_endpts]
+
+@[simp, grind =]
+theorem ssubset_iff : X ⊂ Y ↔ X ⊆ Y ∧ X ≠ Y := by rfl
+
+instance : Decidable (X ⊆ Y) := by simp only [subset_iff_endpts]; infer_instance
+instance : Decidable (X ⊂ Y) := by simp only [ssubset_iff]; infer_instance
 
 def intersection {k : ℕ} (U V : Vecterval k) : Option (Vecterval k) :=
   match k with
@@ -348,6 +406,9 @@ theorem ofFn_get_eq_self : Matrival.ofFn A.get = A := by
   apply Vector.ext; intro j hj
   simp only [getElem_ofFn, get_eq_getElem]
 
+def one : Matrival n n := ofFn (1 : Matrix (Fin n) (Fin n) DyadicInterval)
+
+-- Note : Matrix mul is not sharp!
 def mul (A : Matrival l m) (B : Matrival m n) : Matrival l n :=
   let A' : Matrix (Fin l) (Fin m) DyadicInterval:= A.get
   let B' : Matrix (Fin m) (Fin n) DyadicInterval:= B.get
@@ -385,21 +446,25 @@ end IntervalMatrix
 end Matrival
 
 
-open DyadicInterval
-def I₁ := ofRatWithPrec 5 ((7: ℚ)/9)
-def I₂ := ofRatWithPrec 5 ((1: ℚ)/3)
-def J₁ := ofRatWithPrec 6 ((2: ℚ)/5)
-def J₂ := ofRatWithPrec 6 ((3: ℚ)/7)
--- def J₁ := ofRatWithPrec 5 ((7: ℚ)/9)
--- def J₂ := ofRatWithPrec 5 ((1: ℚ)/3)
-def X : Vecterval 2 := ⟨#[I₁, I₂], by simp⟩
-def Y : Vecterval 2 := ⟨#[J₁, J₂], by simp⟩
-def Z : Vecterval 0 := #v[]
-#eval X[0]
-#eval Y
-#eval X ⬝ᵥ Y
-#eval (1 : Vecterval 2) ⬝ᵥ X
-#eval (I₁ * J₁) + (I₂ * J₂)
-#eval (X + Y)
-#eval (X - Y)
-#eval X.split_along 0
+-- open DyadicInterval
+-- def I₁ := ofRatWithPrec 5 ((7: ℚ)/9)
+-- def I₂ := ofRatWithPrec 5 ((1: ℚ)/3)
+-- def J₁ := ofRatWithPrec 6 ((2: ℚ)/5)
+-- def J₂ := ofRatWithPrec 6 ((3: ℚ)/7)
+-- -- def J₁ := ofRatWithPrec 5 ((7: ℚ)/9)
+-- -- def J₂ := ofRatWithPrec 5 ((1: ℚ)/3)
+-- def X : Vecterval 2 := ⟨#[I₁, I₂], by simp⟩
+-- def Y : Vecterval 2 := ⟨#[J₁, J₂], by simp⟩
+-- def Z : Vecterval 0 := #v[]
+
+-- #eval X[0]
+-- #eval Y
+-- #eval X ⬝ᵥ Y
+-- #eval (1 : Vecterval 2) ⬝ᵥ X
+-- #eval (I₁ * J₁) + (I₂ * J₂)
+-- #eval (X + Y)
+-- #eval (X - Y)
+-- #eval X.split_along 0
+
+-- def A : Matrix (Fin 2) (Fin 2) DyadicInterval := 1
+-- #eval (((A 0 0), (A 0 1)), ((A 1 0), (A 1 1)))
