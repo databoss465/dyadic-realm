@@ -70,8 +70,6 @@ instance : Coe (Vector ℤ n) (Vecterval n) := ⟨Vecterval.ofVecInt⟩
 
 def ofVecRatWithPrec (prec : ℤ) (V : Vector ℚ n) := V.map (ofRatWithPrec prec)
 
-def midpoint : Vector Dyadic n := X.map (fun I ↦ I.midpoint)
-
 /-- Set of functions `f : Fin n → ℝ` such that for every coordinate `i`,
     `f i` lies in the interval `X.get i`. -/
 def toSet := Set.pi Set.univ (fun i => (X.get i).toSet)
@@ -79,6 +77,10 @@ def toSet := Set.pi Set.univ (fun i => (X.get i).toSet)
 @[simp, grind .]
 theorem nonempty : X.toSet.Nonempty := by
   simp [toSet, Set.univ_pi_nonempty_iff, DyadicInterval.nonempty]
+
+theorem convex : Convex ℝ X.toSet := by
+  apply convex_pi
+  simp only [mem_univ, DyadicInterval.toSet, convex_Icc, imp_self, implies_true]
 
 @[simp, grind =]
 theorem mem_iff (x : Vector ℝ n) : x ∈ X ↔ ∀ i : Fin n, x.get i ∈ X.get i := by rfl
@@ -104,6 +106,14 @@ theorem mem_back_of_mem (X : Vecterval (n + 1))(x : Vector ℝ (n + 1)) :  x ∈
   simp only [Vecterval.mem_iff, get_eq_getElem] at hx
   specialize hx ⟨n, by grind only⟩
   grind only
+
+def midpoint : Vector Dyadic n := X.map (fun I ↦ I.midpoint)
+
+def midpoint_real {n : ℕ} (X : Vecterval n) := X.midpoint.map (fun a ↦ (a.toRat : ℝ))
+
+theorem midpoint_mem {n : ℕ} (X : Vecterval n) : X.midpoint_real ∈ X := by
+  simp only [midpoint_real, midpoint, Vector.map_map, mem_iff, Vector.get_map, Function.comp_apply,
+    DyadicInterval.midpoint_mem, implies_true]
 
 def width : Vector Dyadic n := X.map (fun I ↦ I.width)
 
@@ -431,6 +441,11 @@ instance : HMul (Vecterval m) (Matrival m n) (Vecterval n) := ⟨vecMul⟩
 def rat_midpoint : Matrix (Fin m) (Fin n) ℚ := fun i j ↦ ↑(A.get i j).midpoint.toRat
 
 /-- Appriximate Moore-Penrose Pseudoinverse for Rectangular matrices -/
+def ApproxInverse (A : Matrival m n) : Matrix (Fin n) (Fin m) ℝ :=
+  let B := (A.rat_midpoint).transpose * (A.rat_midpoint)
+  let B' := ((1/B.det) • B.adjugate) * (A.rat_midpoint.transpose)
+  fun i j ↦ ((B' i j) : ℝ)
+
 def ApproxInvWithPrec (prec : ℤ) (A : Matrival m n): Matrival n m :=
   let B := (A.rat_midpoint).transpose * (A.rat_midpoint)
   let B' := ((1/B.det) • B.adjugate) * (A.rat_midpoint.transpose)
