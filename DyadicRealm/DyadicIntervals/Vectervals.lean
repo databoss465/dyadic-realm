@@ -7,6 +7,7 @@ import DyadicRealm.DyadicIntervals.Arithmetic
 set_option linter.style.commandStart false
 set_option linter.style.longLine false
 set_option linter.unusedVariables false
+set_option linter.unusedDecidableInType false
 
 namespace Vector
 
@@ -53,6 +54,16 @@ theorem ofFn_get_eq_self : Vecterval.ofFn X.get = X := by
   apply Vector.ext; intro i hi
   simp only [Vecterval.getElem_ofFn, get_eq_getElem]
 
+@[simp, grind =]
+theorem get_add : (X + Y).get = X.get + Y.get := by
+  change Vector.get (Vector.add X Y) = Vector.get X + Vector.get Y
+  ext1 i; simp only [Vector.add, get_eq_getElem, getElem_zipWith, Pi.add_apply]
+
+@[simp, grind =]
+theorem get_sub : (X - Y).get = X.get - Y.get := by
+  change Vector.get (Vector.sub X Y) = Vector.get X - Vector.get Y
+  ext1 i; simp only [Vector.sub, get_eq_getElem, getElem_zipWith, Pi.sub_apply]
+
 @[simp]
 theorem eq_empty {xs : Vecterval 0} : xs = #v[] := by simp only [Vector.eq_empty]
 
@@ -82,6 +93,13 @@ theorem convex : Convex ℝ X.toSet := by
   apply convex_pi
   simp only [mem_univ, DyadicInterval.toSet, convex_Icc, imp_self, implies_true]
 
+theorem compact : IsCompact X.toSet := by
+  apply isCompact_univ_pi
+  grind only [DyadicInterval.toSet, isCompact_Icc]
+
+theorem complete : IsComplete X.toSet :=
+  IsCompact.isComplete X.compact
+
 @[simp, grind =]
 theorem mem_iff (x : Vector ℝ n) : x ∈ X ↔ ∀ i : Fin n, x.get i ∈ X.get i := by rfl
 
@@ -109,10 +127,12 @@ theorem mem_back_of_mem (X : Vecterval (n + 1))(x : Vector ℝ (n + 1)) :  x ∈
 
 def midpoint : Vector Dyadic n := X.map (fun I ↦ I.midpoint)
 
-def midpoint_real {n : ℕ} (X : Vecterval n) := X.midpoint.map (fun a ↦ (a.toRat : ℝ))
+def midpoint_rat {n : ℕ} (X : Vecterval n) : Vector ℚ n := X.midpoint.map toRat
+
+def midpoint_real {n : ℕ} (X : Vecterval n) : Vector ℝ n := X.midpoint_rat.map (Rat.cast)
 
 theorem midpoint_mem {n : ℕ} (X : Vecterval n) : X.midpoint_real ∈ X := by
-  simp only [midpoint_real, midpoint, Vector.map_map, mem_iff, Vector.get_map, Function.comp_apply,
+  simp only [midpoint_real, midpoint_rat, midpoint, Vector.map_map, mem_iff, Vector.get_map, Function.comp_apply,
     DyadicInterval.midpoint_mem, implies_true]
 
 def width : Vector Dyadic n := X.map (fun I ↦ I.width)
@@ -138,6 +158,31 @@ infixl:72 " ⬝ᵥ " => dotProduct
 
 @[simp, grind =]
 theorem dotProduct_comm : X ⬝ᵥ Y = Y ⬝ᵥ X := by simp only [dotProduct, _root_.dotProduct_comm]
+
+lemma fun_mem_iff (f : Fin n → ℝ) : Vector.ofFn f ∈ X ↔ ∀ i, f i ∈ X.get i := by
+  simp only [mem_iff, Vector.get_ofFn]
+
+lemma sum_sound {ι : Type*} [DecidableEq ι] (s : Finset ι) (f : ι → ℝ) (F : ι → DyadicInterval)
+  (h : ∀ i ∈ s, f i ∈ F i) : ∑ i ∈ s, f i ∈ ∑ i ∈ s, F i := by
+  induction s using Finset.induction_on with
+  | empty =>
+    simp only [Finset.sum_empty]
+    have : 0 = (toRat 0 : ℝ) := by simp only [toRat_zero, Rat.cast_zero]
+    change 0 ∈ ofDyadic 0
+    rw [this]; apply to_rat_mem_of_dyadic
+  | insert a s' ha ih =>
+    rw [Finset.sum_insert ha, Finset.sum_insert ha]
+    apply add_sound
+    · apply h _ (Finset.mem_insert_self a s')
+    · apply ih (fun i hi => h i (Finset.mem_insert_of_mem hi))
+
+theorem dot_product_sound (x y : Fin n → ℝ) (hx : Vector.ofFn x ∈ X)
+  (hy : Vector.ofFn y ∈ Y) : x ⬝ᵥ y ∈ X ⬝ᵥ Y := by
+  unfold dotProduct _root_.dotProduct
+  apply sum_sound
+  simp only [Finset.mem_univ, forall_const]
+  intro i; simp only [fun_mem_iff] at *
+  apply mul_sound <;> grind only
 
 @[grind .]
 def lt : Prop := ∀ i, X.get i < Y.get i
@@ -418,6 +463,14 @@ theorem ofFn_get_eq_self : Matrival.ofFn A.get = A := by
 
 def one : Matrival n n := ofFn (1 : Matrix (Fin n) (Fin n) DyadicInterval)
 
+def mem (A' : Matrix (Fin m) (Fin n) ℝ) : Prop := ∀ i, ∀ j, A' i j ∈ A.get i j
+instance : Membership (Matrix (Fin m) (Fin n) ℝ) (Matrival m n) := ⟨mem⟩
+
+theorem mem_iff (A' : Matrix (Fin m) (Fin n) ℝ) : A' ∈ A ↔ ∀ i, ∀ j, A' i j ∈ A.get i j := by rfl
+
+theorem mem_iff_col (A' : Matrix (Fin m) (Fin n) ℝ) : A' ∈ A ↔ ∀ i, Vector.ofFn (A' i) ∈ Vector.get A i := by
+  simp only [mem_iff, Vecterval.mem_iff, Vector.get_ofFn, Matrival.get]
+
 -- Note : Matrix mul is not sharp!
 def mul (A : Matrival l m) (B : Matrival m n) : Matrival l n :=
   let A' : Matrix (Fin l) (Fin m) DyadicInterval:= A.get
@@ -429,6 +482,30 @@ instance : HMul (Matrival l m) (Matrival m n) (Matrival l n) := ⟨mul⟩
 def mulVec (A : Matrival m n) (X : Vecterval n) : Vecterval m :=
   let A' : Matrix (Fin m) (Fin n) DyadicInterval:= A.get
   Vecterval.ofFn (A'.mulVecᵣ X.get )
+
+theorem mulVec_sound {A : Matrival m n} {X : Vecterval n} {A' : (Matrix (Fin m) (Fin n) ℝ)}
+  {x : Vector ℝ n} (hA : A' ∈ A) (hX : x ∈ X) : Vector.ofFn (A'.mulVecᵣ x.get) ∈ A.mulVec X := by
+  simp only [Matrival.mulVec, Matrix.mulVecᵣ_eq, Vecterval.mem_iff, Vector.get_ofFn]
+  intro i
+  simp only [Matrix.mulVecᵣ, Matrix.dotProductᵣ_eq, FinVec.map_eq, Vecterval.get_ofFn,
+    Function.comp_apply, Matrix.mulVec]
+  unfold Matrival.get
+  change (fun j ↦ A' i j) ⬝ᵥ x.get ∈ (Vector.get A i) ⬝ᵥ X
+  apply Vecterval.dot_product_sound
+  · simp only [Vecterval.mem_iff, Vector.get_ofFn]
+    rw [mem_iff] at hA
+    apply hA
+  · simp only [Vecterval.mem_iff, Vector.get_ofFn]
+    grind only [← Vecterval.mem_iff]
+
+theorem mulVec_sound' {A : Matrival m n} {X : Vecterval n}
+  {A' : Matrix (Fin m) (Fin n) ℝ} {x : Fin n → ℝ}
+  (hA : A' ∈ A) (hX : Vector.ofFn x ∈ X) (i : Fin m) :
+  A'.mulVec x i ∈ Matrix.mulVecᵣ A.get (Vector.get X) i := by
+  have h₁ := Matrival.mulVec_sound hA hX i
+  simp only [Matrix.mulVecᵣ_eq, Vector.get_ofFn, mulVec, Vecterval.get_ofFn] at h₁
+  have h₂ : (Vector.ofFn x).get = x := by ext k; simp only [Vector.get_ofFn]
+  grind only
 
 instance : HMul (Matrival m n) (Vecterval n) (Vecterval m) := ⟨mulVec⟩
 
@@ -444,19 +521,25 @@ def rat_midpoint : Matrix (Fin m) (Fin n) ℚ := fun i j ↦ ↑(A.get i j).midp
 def ApproxInverse (A : Matrival m n) : Matrix (Fin n) (Fin m) ℝ :=
   let B := (A.rat_midpoint).transpose * (A.rat_midpoint)
   let B' := ((1/B.det) • B.adjugate) * (A.rat_midpoint.transpose)
-  fun i j ↦ ((B' i j) : ℝ)
+  fun i j ↦ B' i j
 
 def ApproxInvWithPrec (prec : ℤ) (A : Matrival m n): Matrival n m :=
   let B := (A.rat_midpoint).transpose * (A.rat_midpoint)
   let B' := ((1/B.det) • B.adjugate) * (A.rat_midpoint.transpose)
   Matrival.ofFn (fun i j ↦ ofRatWithPrec prec (B' i j))
 
+theorem approx_inverse_mem (prec : ℤ) (A : Matrival m n) : ApproxInverse A ∈ ApproxInvWithPrec prec A := by
+  simp only [mem_iff]; intro i j
+  simp only [ApproxInverse, ApproxInvWithPrec, get]
+  simp only [Vector.get_eq_getElem, getElem_ofFn]
+  generalize h : (((1 / (A.rat_midpoint.transpose * A.rat_midpoint).det) • (A.rat_midpoint.transpose * A.rat_midpoint).adjugate * A.rat_midpoint.transpose) i j) = q
+  apply rat_mem_of_rat
+
 def norm (A : Matrival m n) : Dyadic :=
   let M := A.map (fun X ↦ X.abs)
   match M.toList with
   | [] => 0
   | x :: xs => (x :: xs).max (by grind only)
-
 end IntervalMatrix
 end Matrival
 

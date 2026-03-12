@@ -24,14 +24,11 @@ lemma zip_push {α : Type _} {n : ℕ} {β : Type _} {as : Vector α n} {bs : Ve
 
 end Vector
 
--- List of Coeff, Monomial pairs; where monomial is represented by its power in each variable
--- ℝ^k → ℝ
+/-- List of Coeff, Monomial pairs; where monomial is represented by its power in each variable; ℝ^k → ℝ -/
 abbrev MvRatPol (n : ℕ) := List (ℚ × Vector ℕ n)
 
--- ℝ^k → ℝ^k
-abbrev System (m n : ℕ) := Vector (MvRatPol n) m
-
 namespace MvRatPol
+section Structural
 open DyadicInterval Dyadic Vector MvPolynomial
 variable {m n : ℕ}
 
@@ -39,7 +36,7 @@ variable {m n : ℕ}
 
 -- Given a coefficeient a and multi-index; constructs a ⬝ x^i
 noncomputable def toMvMono (q : ℚ × Vector ℕ n) : MvPolynomial (Fin n) ℚ :=
-  -- Here Finset.univ = {0, 1,..., k-1}, because type is (Fin n)
+  -- Finset.univ = {0, 1,..., k-1}
   -- The third term is the proof, ∀ (i : Fin n), powers.get i ≠ 0 → i ∈ Finset.univ
   let f' := Finsupp.onFinset Finset.univ (q.2.get) (fun i _ => Finset.mem_univ i)
   monomial f' q.1   --f' is the Finite support version of powers.get
@@ -49,6 +46,10 @@ noncomputable def toMvRealMono (q : ℚ × Vector ℕ n) : MvPolynomial (Fin n) 
 
 noncomputable def toMvPoly (p : MvRatPol n) : MvPolynomial (Fin n) ℚ :=
   (p.map fun q ↦ toMvMono q).sum
+
+-- noncomputable def ofMvPoly (p : MvPolynomial (Fin n) ℚ): MvRatPol n :=
+--   let support := p.support.toList
+--   support.map (fun m => (p.coeff m, Vector.ofFn m))
 
 lemma to_mv_poly_mono (q : ℚ × Vector ℕ n) : toMvPoly [q] = toMvMono q := by
   simp only [toMvPoly, toMvMono, List.map_singleton, List.sum_singleton]
@@ -62,6 +63,9 @@ lemma to_mv_real_poly_mono (q : ℚ × Vector ℕ n) : toMvRealPoly [q] = toMvRe
 
 def C (n : ℕ) (q : ℚ)  : MvRatPol n := [(q, 0)]
 
+instance : Zero (MvRatPol n) := ⟨C n 0⟩
+instance : One (MvRatPol n) := ⟨C n 1⟩
+
 theorem to_mv_poly_C (n : ℕ) (q : ℚ) : toMvPoly (C n q) = MvPolynomial.C q := by
   simp only [C, to_mv_poly_mono, toMvMono]
   have : Finsupp.onFinset Finset.univ (Vector.get (0 : Vector ℕ n)) (fun i _ => Finset.mem_univ i) = 0 := by
@@ -70,12 +74,16 @@ theorem to_mv_poly_C (n : ℕ) (q : ℚ) : toMvPoly (C n q) = MvPolynomial.C q :
     simp only [get_replicate]
   rw [this, ← MvPolynomial.C_apply]
 
+theorem to_mv_poly_zero (n : ℕ) : toMvPoly (C n 0) = 0 := by
+  simp only [to_mv_poly_C, C_0]
+
+theorem to_mv_poly_one (n : ℕ) : toMvPoly (C n 1) = 1 := by
+  simp only [to_mv_poly_C, C_1]
+
 theorem to_mv_real_poly_C (n : ℕ) (q : ℚ) : toMvRealPoly (C n q) = MvPolynomial.C ↑q := by
   simp only [toMvRealPoly, to_mv_poly_C, map_C, eq_ratCast]
 
 def X (i : Fin n) : MvRatPol n := [(1, set 0 i 1)]
-
-def X' : System n n := Vector.ofFn (fun i ↦ X i)
 
 theorem to_mv_poly_X (i : Fin n) : toMvPoly (X i) = MvPolynomial.X i := by
   simp only [X, to_mv_poly_mono, toMvMono]
@@ -118,6 +126,9 @@ def coeff (p : MvRatPol n) (m : Fin n →₀ ℕ) : ℚ :=
   let m_vec := Vector.ofFn m                   -- Convert monomial to a vector
   let p' := p.filter (fun q ↦ q.2 = m_vec)     -- Filter all monomials
   (p'.map (fun q ↦ q.1)).sum                   -- Get coeffs and add
+
+lemma coeff_trivial (m : Fin n →₀ ℕ) : coeff [] m = 0 := by
+  simp only [coeff, List.filter_nil, List.map_nil, List.sum_nil]
 
 lemma coeff_mono (q : ℚ × Vector ℕ n) (m : Fin n →₀ ℕ) :
   coeff [q] m = if q.2 = ofFn m then q.1 else 0 := by
@@ -164,52 +175,211 @@ lemma coeff_to_mv_poly (p : MvRatPol n) (m : Fin n →₀ ℕ) : p.coeff m = (p.
 lemma coeff_to_mv_real_poly (p : MvRatPol n) (m : Fin n →₀ ℕ) : p.coeff m  = (p.toMvRealPoly).coeff m := by
   simp only [coeff_to_mv_poly, toMvRealPoly, coeff_map, eq_ratCast]
 
+lemma to_mv_poly_trivial (p : MvRatPol n) : p = [] → toMvPoly p = 0 := by
+  intro h; ext m
+  simp only [coeff_zero, ← coeff_to_mv_poly]
+  simp only [coeff, h, List.filter_nil, List.map_nil, List.sum_nil]
+
 lemma to_mv_real_poly_trivial (p : MvRatPol n) : p = [] → toMvRealPoly p = 0 := by
   intro h; ext m
   simp only [coeff_zero, ← coeff_to_mv_real_poly]; norm_cast
   simp only [coeff, h, List.filter_nil, List.map_nil, List.sum_nil]
 
-abbrev add (p q : MvRatPol n) := p ++ q
-instance : Add (MvRatPol n) := ⟨add⟩
+end Structural
 
-theorem toMvPoly_add (p q : MvRatPol n) :  toMvPoly (p + q) = toMvPoly p + toMvPoly q := by
-  simp [toMvPoly, ← List.sum_append, ← List.map_append]; rfl
+-- section Algebra
+-- open Vector MvPolynomial
+-- variable {m n : ℕ}
 
-theorem cons_add (q : ℚ × Vector ℕ n)(qs : MvRatPol n) : q :: qs = [q] + qs := by rfl
+-- def lt (p q : ℚ × Vector ℕ n) := p.2 < q.2 ∨ (p.2 = q.2 ∧ p.1 < q.1)
+-- instance : LT (ℚ × Vector ℕ n) := ⟨lt⟩
+-- instance (p q : ℚ × Vector ℕ n) : Decidable (lt p q) :=
+--   by unfold lt; infer_instance
 
-theorem toMvRealPoly_add (p q : MvRatPol n) : toMvRealPoly (p + q) = toMvRealPoly p + toMvRealPoly q := by
-  simp only [toMvRealPoly, toMvPoly_add, map_add]
+-- def le (p q : ℚ × Vector ℕ n) := lt p q ∨ p = q
+-- instance : LE (ℚ × Vector ℕ n) := ⟨le⟩
+-- instance (p q : ℚ × Vector ℕ n) : Decidable (le p q) := by
+--   unfold le; infer_instance
+-- instance : DecidableLE (ℚ × Vector ℕ n) := fun p q => inferInstanceAs (Decidable (le p q))
 
-def smul (r : ℚ) (p : MvRatPol n) : MvRatPol n := p.map (fun (q, v) ↦ (q * r, v))
-instance : SMul ℚ (MvRatPol n) := ⟨smul⟩
+-- instance : LinearOrder (ℚ × Vector ℕ n) where
+--   lt := lt
+--   le := le
+--   le_refl := by grind only [le, lt]
+--   le_trans := by grind only [le, lt]
+--   lt_iff_le_not_ge := by grind only [le, lt]
+--   le_antisymm := by grind only [le, lt]
+--   le_total := by grind only [le, lt]
+--   toDecidableLE := fun p q => inferInstanceAs (Decidable (le p q))
+--   min := fun p q ↦ if p ≤ q then p else q
+--   max := fun p q ↦ if p ≤ q then q else p
 
-theorem smul_add (r : ℚ) (p q : MvRatPol n) : r • (p + q) = r • p + r • q := by
-  change (p ++ q).map (fun (q, v) ↦ (q * r, v)) = p.map (fun (q, v) ↦ (q * r, v)) ++ q.map (fun (q, v) ↦ (q * r, v))
-  simp only [List.map_append]
+-- def groupTerms (p : MvRatPol n) : MvRatPol n :=
+--   match p with
+--   | [] => []
+--   | q :: [] =>
+--     if q.1 = 0 then [] else [q]
+--   | q1 :: q2 :: qs =>
+--     if q1.2 = q2.2 then groupTerms ((q1.1 + q2.1, q1.2) :: qs)
+--     else if q1.1 = 0 then groupTerms (q2 :: qs)
+--     else q1 :: groupTerms (q2 :: qs)
+-- termination_by p.length
 
-theorem toMvRealPoly_smul (r : ℚ) (p : MvRatPol n) : toMvRealPoly (r • p) = r • toMvRealPoly p := by
-  induction p with
-  | nil =>
-    change toMvRealPoly ([].map (fun (q, v) ↦ (q * r, v))) =  r • toMvRealPoly []
-    simp [to_mv_real_poly_trivial]
-  | cons q qs ih =>
-    rw [cons_add, smul_add]
-    simp only [toMvRealPoly_add, ih, _root_.smul_add, add_left_inj]
-    change toMvRealPoly ([q].map (fun (q, v) ↦ (q * r, v))) =  r • toMvRealPoly [q]
-    simp only [List.map_singleton, to_mv_real_poly_mono, toMvRealMono, toMvMono]
-    simp only [map_monomial, eq_ratCast, Rat.cast_mul, smul_monomial, _root_.mul_comm]; congr
+-- theorem groupTerms_perm_sorted {l1 l2 : MvRatPol n} (h_perm : l1.Perm l2) (h1_sort : l1.Pairwise (· ≤ ·))
+--   (h2_sort : l2.Pairwise (· ≤ ·)) : groupTerms l1 = groupTerms l2 := by
+--   congr; grind only [List.Perm.eq_of_pairwise]
 
--- def neg (p : MvRatPol n) := (-1 : ℚ) • p
+-- def canonical (p : MvRatPol n) : MvRatPol n :=
+--   groupTerms (p.insertionSort (· ≤ ·))
+
+-- lemma canonical_perm (p q: MvRatPol n) (h: q.Perm p) : q.canonical = p.canonical := by
+--   have h_sort_q : (q.insertionSort (· ≤ ·)).Perm q := List.perm_insertionSort _ _
+--   have h_sort_p : (p.insertionSort (· ≤ ·)).Perm p := List.perm_insertionSort _ _
+--   have h_combined := h_sort_q.trans (h.trans h_sort_p.symm)
+--   apply groupTerms_perm_sorted h_combined
+--   · apply List.pairwise_insertionSort
+--   · apply List.pairwise_insertionSort
+
+-- lemma toMvPoly_perm (p q: MvRatPol n) (h: q.Perm p) : toMvPoly q = toMvPoly p := by
+--   simp only [toMvPoly]
+--   have h_map : (q.map toMvMono).Perm (p.map toMvMono) := h.map toMvMono
+--   exact List.Perm.sum_eq h_map
+
+-- lemma toMvPoly_groupTerms (p : MvRatPol n) : (groupTerms p).toMvPoly = p.toMvPoly := by
+--   unfold groupTerms
+--   split
+--   · simp only [to_mv_poly_trivial]
+--   · split_ifs with h
+--     · simp only [to_mv_poly_mono, toMvMono, h, monomial_zero, to_mv_poly_trivial]
+--     · rfl
+--   · split_ifs with h
+--     · rw [toMvPoly_groupTerms]
+--       simp only [to_mv_poly_cons, ← _root_.add_assoc, add_left_inj]
+--       simp only [toMvMono, map_add, h]
+--     · rename_i _ _ _ _ h'
+--       rw [toMvPoly_groupTerms]
+--       simp only [to_mv_poly_cons, ← _root_.add_assoc, add_left_inj]
+--       simp only [toMvMono, h', monomial_zero, _root_.zero_add]
+--     · simp only [to_mv_poly_cons, add_right_inj]
+--       rw [toMvPoly_groupTerms]
+--       simp only [to_mv_poly_cons]
+-- termination_by p.length
+
+-- theorem toMvPoly_canonical (p : MvRatPol n) : toMvPoly (p.canonical) = toMvPoly p := by
+--   simp only [canonical, toMvPoly_groupTerms]
+--   apply toMvPoly_perm
+--   simp only [List.perm_insertionSort]
+
+-- abbrev add (p q : MvRatPol n) := canonical (p ++ q)
+-- instance : Add (MvRatPol n) := ⟨add⟩
+
+-- lemma add_eq (p q : MvRatPol n) : p + q = canonical (p ++ q) := rfl
+
+-- theorem toMvPoly_add (p q : MvRatPol n) :  toMvPoly (p + q) = toMvPoly p + toMvPoly q := by
+--   rw [add_eq, toMvPoly_canonical]
+--   simp only [toMvPoly, ← List.sum_append, ← List.map_append]
+
+-- theorem add_comm (p q : MvRatPol n) : p + q = q + p := by
+--   simp only [add_eq]
+--   grind only [canonical_perm, List.perm_append_comm]
+
+-- theorem add_assoc (p q s: MvRatPol n) : p + q + s = p + (q + s) := by
+--   simp only [add_eq]
+--   sorry
+
+-- theorem add_zero (p : MvRatPol n) : p + 0 = p := by
+--   rw [add_comm, add_eq]
+--   sorry
+
+-- -- theorem cons_add (q : ℚ × Vector ℕ n)(qs : MvRatPol n) : q :: qs = [q] + qs := by sorry
+
+-- theorem toMvRealPoly_add (p q : MvRatPol n) : toMvRealPoly (p + q) = toMvRealPoly p + toMvRealPoly q := by
+--   simp only [toMvRealPoly, toMvPoly_add, map_add]
+
+-- def smul (r : ℚ) (p : MvRatPol n) : MvRatPol n := p.map (fun (q, v) ↦ (q * r, v))
+-- instance : SMul ℚ (MvRatPol n) := ⟨smul⟩
+
+-- theorem canonical_smul (r : ℚ) (p q : MvRatPol n) : (r • p).canonical = r • p.canonical := by
+--   sorry
+
+-- theorem smul_zero (p : MvRatPol n) : (0 : ℚ) • p = 0 := by
+--   sorry
+
+-- theorem smul_one (p : MvRatPol n) : (1 : ℚ) • p = p := by
+--   sorry
+
+-- theorem add_smul (q r : ℚ) (p : MvRatPol n) : (q + r) • p = q • p + r • p := by
+--   sorry
+
+-- theorem smul_add (r : ℚ) (p q : MvRatPol n) : r • (p + q) = r • p + r • q := by
+--   sorry
+--   -- change (p ++ q).map (fun (q, v) ↦ (q * r, v)) = p.map (fun (q, v) ↦ (q * r, v)) ++ q.map (fun (q, v) ↦ (q * r, v))
+--   -- simp only [List.map_append]
+
+-- theorem toMvPoly_smul (r : ℚ) (p : MvRatPol n) : toMvPoly (r • p) = r • toMvPoly p := by
+--   sorry
+--   -- induction p with
+--   -- | nil =>
+--   --   change toMvPoly ([].map (fun (q, v) ↦ (q * r, v))) =  r • toMvPoly []
+--   --   simp [to_mv_poly_trivial]
+--   -- | cons q qs ih =>
+--   --   rw [cons_add, smul_add]
+--   --   simp only [toMvPoly_add, ih, _root_.smul_add, add_left_inj]
+--   --   change toMvPoly ([q].map (fun (q, v) ↦ (q * r, v))) =  r • toMvPoly [q]
+--   --   simp only [List.map_singleton, to_mv_poly_mono, toMvMono, toMvMono]
+--   --   simp only [smul_monomial, _root_.mul_comm]; congr
+
+-- theorem toMvRealPoly_smul (r : ℚ) (p : MvRatPol n) : toMvRealPoly (r • p) = r • toMvRealPoly p := by
+--   sorry
+--   -- induction p with
+--   -- | nil =>
+--   --   change toMvRealPoly ([].map (fun (q, v) ↦ (q * r, v))) =  r • toMvRealPoly []
+--   --   simp [to_mv_real_poly_trivial]
+--   -- | cons q qs ih =>
+--   --   rw [cons_add, smul_add]
+--   --   simp only [toMvRealPoly_add, ih, _root_.smul_add, add_left_inj]
+--   --   change toMvRealPoly ([q].map (fun (q, v) ↦ (q * r, v))) =  r • toMvRealPoly [q]
+--   --   simp only [List.map_singleton, to_mv_real_poly_mono, toMvRealMono, toMvMono]
+--   --   simp only [map_monomial, eq_ratCast, Rat.cast_mul, smul_monomial, _root_.mul_comm]; congr
+
+-- def neg (p : MvRatPol n) : MvRatPol n := p.map (fun (q, n) ↦ (-q, n))
 -- instance : Neg (MvRatPol n) := ⟨neg⟩
 
 -- theorem toMvPoly_neg (p : MvRatPol n) : toMvPoly (-p) = - (toMvPoly p) := by
---   sorry
+--   simp only [MvPolynomial.ext_iff, ← coeff_to_mv_poly, coeff_neg]; intro m
+--   conv => lhs; simp only [Neg.neg, neg]
+--   induction p with
+--   | nil =>
+--     simp only [List.map_nil, coeff_trivial, _root_.neg_zero]
+--   | cons q qs ih =>
+--     rw [coeff_cons]
+--     simp only [List.map_cons, _root_.neg_add_rev]
+--     rw [coeff_cons, _root_.add_comm]
+--     simp only [ih, coeff_mono, add_right_inj]
+--     split_ifs with h <;> rfl
 
 -- def sub (p q : MvRatPol n) := p + (-q)
 -- instance : Sub (MvRatPol n) := ⟨sub⟩
 
+-- theorem add_neg (p q : MvRatPol n) : p - q = p + (-q) := by rfl
+
 -- theorem toMvPoly_sub (p q : MvRatPol n) :  toMvPoly (p - q) = toMvPoly p - toMvPoly q := by
---   sorry
+--   grind only [add_neg, toMvPoly_add, toMvPoly_neg]
+
+-- instance : AddCommMonoid (MvRatPol n) where
+--   add_comm := add_comm
+--   add_assoc := add_assoc
+--   add_zero := add_zero
+--   zero_add := by grind only [add_zero, add_comm]
+--   nsmul (z : ℕ) (p : MvRatPol n) := (z : ℚ) • p
+--   nsmul_zero := by grind only [smul_zero]
+--   nsmul_succ := by grind only [add_smul, smul_one]
+
+-- end Algebra
+
+section Evaluation
+open DyadicInterval Dyadic Vector MvPolynomial
+variable {m n : ℕ}
 
 def evalMonomial (q : ℚ × Vector ℕ n) (x : Vector ℚ n) : ℚ :=
   let vs₀ := zip x q.2
@@ -323,30 +493,11 @@ theorem vecterval_eval_sound (prec : ℤ) (p : MvRatPol n) (X : Vecterval n) :
     · grind only [vecterval_eval_monomial_sound]
     · grind only [vectervalEvalWithPrec]
 
-noncomputable def sysEval' (S : System m n) (x : Vector ℚ n) : Vector ℝ m :=
-  Vector.ofFn (fun i ↦ (toMvRealPoly (S.get i)).eval (fun i ↦ ↑(x.get i)))
+end Evaluation
 
-noncomputable def sysEval (S : System m n) (x : Vector ℝ n) : Vector ℝ m :=
-  Vector.ofFn (fun i ↦ (toMvRealPoly (S.get i)).eval x.get)
-
-theorem sys_eval_X (x : Vector ℝ n) : sysEval X' x = x := by
-  ext i
-  simp only [X', sysEval, getElem_ofFn, get_eq_getElem, to_mv_real_poly_X, eval_X]
-
-
-def sysEvalWithPrec (prec : ℤ) (S : System m n) (x : Vector ℚ n) : Vecterval m :=
-  Vector.ofFn (fun i ↦ evalWithPrec prec (S.get i) x)
-
-theorem sys_eval_sound (prec : ℤ) (S : System m n) (x : Vector ℚ n) :
-  sysEval' S x ∈ sysEvalWithPrec prec S x := by
-  grind only [sysEval', sysEvalWithPrec, Vecterval.mem_iff, get_ofFn, eval_sound]
-
-def sysVectervalEvalWithPrec (prec : ℤ) (S : System m n) (X : Vecterval n) : Vecterval m :=
-  Vector.ofFn (fun i ↦ vectervalEvalWithPrec prec (S.get i) X)
-
-theorem sys_vecterval_eval_sound (prec : ℤ) (S : System m n) (X : Vecterval n) :
-  ∀ x ∈ X, sysEval S x ∈ sysVectervalEvalWithPrec prec S X := by
-  grind only [sysEval, sysVectervalEvalWithPrec, Vecterval.mem_iff, get_ofFn, vecterval_eval_sound]
+section Derivative
+open DyadicInterval Dyadic Vector MvPolynomial
+variable {m n : ℕ}
 
 def pderivMono (i : Fin n) (coeff : ℚ) (powers : Vector ℕ n) : ℚ × Vector ℕ n :=
   let p := powers.get i
@@ -354,10 +505,7 @@ def pderivMono (i : Fin n) (coeff : ℚ) (powers : Vector ℕ n) : ℚ × Vector
   else ⟨(coeff * p), powers.set i (p-1)⟩
 
 def pderiv (i : Fin n) (p : MvRatPol n) : MvRatPol n := p.map (fun (a, xs) ↦ pderivMono i a xs)
-
-lemma pderiv_cons (i : Fin n) (q : ℚ × Vector ℕ n)(qs : MvRatPol n) :
-  pderiv i (q :: qs) = pderiv i [q] + pderiv i qs := by
-  simp only [pderiv, List.map_cons, List.map_nil]; rfl
+  -- simp only [pderiv, List.map_cons, List.map_nil]; rfl
 
 theorem pderiv_mono (i : Fin n) (x : Fin n → ℝ) (q : ℚ × Vector ℕ n) : (eval x) (pderiv i [q]).toMvRealPoly =
   ↑q.1 * ((∏ j ∈ Finset.univ.erase i, x j ^ q.2.get j) * (↑(q.2.get i) * x i ^ (q.2.get i - 1))) := by
@@ -382,11 +530,27 @@ theorem pderiv_mono (i : Fin n) (x : Fin n → ℝ) (q : ℚ × Vector ℕ n) : 
       exfalso; grind only [= Finset.mem_erase]
     · rfl
 
-def gradient (p : MvRatPol n) : System n n := ofFn (fun i ↦ pderiv i p)
+lemma pderiv_cons_toMvRealPoly (i : Fin n) (q : ℚ × Vector ℕ n)(qs : MvRatPol n) :
+  (pderiv i (q :: qs)).toMvRealPoly = (pderiv i [q]).toMvRealPoly + (pderiv i qs).toMvRealPoly := by
+  simp [pderiv, List.map_cons, List.map_nil, to_mv_real_poly_cons, to_mv_real_poly_trivial]
 
+theorem pderiv_C (i : Fin n) (c : ℚ) : pderiv i (C n c) = 0 := by
+  sorry
+
+theorem pderiv_X (i j : Fin n) :
+  pderiv i (MvRatPol.X j) = if i = j then 1 else 0 := by
+  sorry
+
+/-- Frechet derivative is the linear map from ℝ^n → ℝ
+  fderiv p x.get y = ∇p(x) · y = Σ i, ((∂p/∂xᵢ)(x)) * yᵢ -/
 noncomputable def fderiv (p : MvRatPol n) (f : Fin n → ℝ) : StrongDual ℝ ((Fin n) → ℝ) :=
   let grad_eval (i : Fin n) : ℝ := (toMvRealPoly (pderiv i p)).eval f
   LinearMap.toContinuousLinearMap (∑ i : Fin n, grad_eval i • LinearMap.proj i)
+
+-- theorem fderiv_canonical (p : MvRatPol n) (f : Fin n → ℝ) :
+--   fderiv (p.canonical) f = fderiv p f := by
+--   simp only [fderiv]
+--   sorry
 
 theorem fderiv_trivial (x : Fin n → ℝ) : fderiv [] x = 0 := by
   simp only [fderiv, pderiv, List.map_nil, to_mv_real_poly_trivial,
@@ -395,8 +559,8 @@ theorem fderiv_trivial (x : Fin n → ℝ) : fderiv [] x = 0 := by
 theorem fderiv_cons (x : Fin n → ℝ) (q : ℚ × Vector ℕ n)(qs : MvRatPol n) :
   fderiv (q :: qs) x = fderiv [q] x + fderiv qs x := by
   simp only [fderiv, map_sum, map_smul, ← Finset.sum_add_distrib]; congr 1
-  ext i v; rw [pderiv_cons]
-  simp only [toMvRealPoly_add, eval_add, ContinuousLinearMap.coe_smul',
+  ext i v; rw [pderiv_cons_toMvRealPoly]
+  simp only [eval_add, ContinuousLinearMap.coe_smul',
     LinearMap.coe_toContinuousLinearMap', LinearMap.coe_proj, Pi.smul_apply, Function.eval,
     smul_eq_mul, ContinuousLinearMap.add_apply]
   grind only
@@ -412,6 +576,41 @@ theorem fderiv_mono (x : Fin n → ℝ) (q : ℚ × Vector ℕ n) :
   rw [← _root_.mul_assoc (∏ j ∈ Finset.univ.erase i, x j ^ q.2.get j), ← _root_.mul_assoc]
   simp only [pderiv_mono]
 
+theorem fderiv_zero (f : Fin n → ℝ) : fderiv 0 f = 0 := by
+  sorry
+
+theorem fderiv_X (j : Fin n) (f : Fin n → ℝ) :
+  fderiv (MvRatPol.X j) f = ContinuousLinearMap.proj j := by
+  sorry
+
+-- theorem fderiv_add (p q: MvRatPol n) (f : Fin n → ℝ) :
+--   fderiv (p + q) f = fderiv p f + fderiv q f :=
+--   sorry
+
+-- theorem fderiv_sum (fp : Fin m → MvRatPol n) (f : Fin n → ℝ) :
+--   fderiv ((Vector.ofFn (fp)).sum) f = ∑ j, fderiv (fp j) f := by
+--   induction m with
+--   | zero =>
+--     have : ofFn fp = #v[] := by grind only
+--     simp only [this, sum_mk, List.sum_toArray, List.sum_nil,
+--       Finset.univ_eq_empty, Finset.sum_empty, fderiv_zero]
+--   | succ k ih =>
+--     simp only [ofFn_succ, push_sum, fderiv_add, ih]
+--     simp only [Fin.sum_univ_castSucc, add_right_inj]; congr
+
+-- theorem fderiv_sum (fp : Fin m → MvRatPol n) (f : Fin n → ℝ) :
+--   fderiv (∑ j, fp j) f = ∑ j, fderiv (fp j) f := by
+--   induction m with
+--   | zero => sorry
+--   | succ k ih => sorry
+
+-- theorem fderiv_smul (r : ℚ) (p : MvRatPol n) (f : Fin n → ℝ) :
+--   fderiv (r • p) f = r • fderiv p f := by
+--   sorry
+
+-- theorem fderiv_neg (p q: MvRatPol n) (f : Fin n → ℝ) :
+--   fderiv (p - q) f = fderiv p f - fderiv q f :=
+--   sorry
 
 theorem hasDerivWithinAt_mono (q : ℚ × Vector ℕ n) (X : Vecterval n) : ∀ x ∈ X.toSet,
   HasFDerivWithinAt (fun x ↦ (eval x) (toMvRealMono q)) (fderiv [q] x) X.toSet x := by
@@ -438,10 +637,6 @@ theorem hasFDerivWithinAt_eval (p : MvRatPol n) (X : Vecterval n) : ∀ x ∈ X.
     apply HasFDerivWithinAt.add _ ih
     exact hasDerivWithinAt_mono q X x hx
 
-def jacobianEvalWithPrec (prec : ℤ) (S : System m n) (X : Vecterval n): Matrival m n :=
-  let F : Fin m → Fin n → MvRatPol n := fun i j ↦ pderiv j (S.get i)
-  Matrival.ofFn (fun i j ↦ vectervalEvalWithPrec prec (F i j) X)
-
 theorem mvt_real_poly (p : MvRatPol n) (X : Vecterval n) : ∀ x ∈ X, ∃ ξ ∈ X,
   (toMvRealPoly p).eval x.get = (toMvRealPoly p).eval X.midpoint_real.get +
   (p.fderiv ξ.get) (x.get - X.midpoint_real.get) := by
@@ -456,7 +651,90 @@ theorem mvt_real_poly (p : MvRatPol n) (X : Vecterval n) : ∀ x ∈ X, ∃ ξ �
     exact Set.mem_of_subset_of_mem (Convex.segment_subset X.convex hxm hx) h
   · grind only
 
+end Derivative
 end MvRatPol
+
+/-- ℝ^k → ℝ^k -/
+abbrev System (m n : ℕ) := Vector (MvRatPol n) m
+
+namespace System
+section MvRatPolynomialSystem
+open DyadicInterval Dyadic Vector MvPolynomial MvRatPol
+variable {m n : ℕ}
+
+noncomputable abbrev toMv (S : System m n) := S.map (toMvPoly)
+noncomputable abbrev toMvReal (S : System m n) := S.map (toMvRealPoly)
+
+def X : System n n := Vector.ofFn (fun i ↦ MvRatPol.X i)
+
+noncomputable def ratEval (S : System m n) (x : Vector ℚ n) : Vector ℝ m :=
+  Vector.ofFn (fun i ↦ (toMvRealPoly (S.get i)).eval (fun i ↦ ↑(x.get i)))
+
+noncomputable def eval (S : System m n) (x : Vector ℝ n) : Vector ℝ m :=
+  Vector.ofFn (fun i ↦ (toMvRealPoly (S.get i)).eval x.get)
+
+noncomputable def eval' (S : System m n) (x : Fin n → ℝ) : Fin m → ℝ :=
+  fun i ↦ (toMvRealPoly (S.get i)).eval x
+
+theorem eval_eq (S : System m n) (x : Vector ℝ n) : (S.eval x).get = (S.eval' x.get) := by
+  grind only [eval, eval', get_ofFn]
+
+theorem eval_X (x : Vector ℝ n) : eval X x = x := by
+  ext i
+  simp only [X, eval, getElem_ofFn, get_eq_getElem, to_mv_real_poly_X, MvPolynomial.eval_X]
+
+def evalWithPrec (prec : ℤ) (S : System m n) (x : Vector ℚ n) : Vecterval m :=
+  Vector.ofFn (fun i ↦ (S.get i).evalWithPrec prec x)
+
+theorem rat_eval_sound (prec : ℤ) (S : System m n) (x : Vector ℚ n) :
+  ratEval S x ∈ evalWithPrec prec S x := by
+  grind only [ratEval, evalWithPrec, Vecterval.mem_iff, get_ofFn, eval_sound]
+
+theorem eval_sound (prec : ℤ) (S : System m n) (x : Vector ℚ n) :
+  eval S (x.map Rat.cast) ∈ evalWithPrec prec S x := by
+  have : (Vector.map Rat.cast x).get = fun i ↦ ((x.get i) : ℝ) := by
+    ext i; simp only [get_map]
+  grind only [evalWithPrec, eval, Vecterval.mem_iff, get_ofFn, MvRatPol.eval_sound]
+
+def vectervalEvalWithPrec (prec : ℤ) (S : System m n) (X : Vecterval n) : Vecterval m :=
+  Vector.ofFn (fun i ↦ (S.get i).vectervalEvalWithPrec prec X)
+
+theorem vecterval_eval_sound (prec : ℤ) (S : System m n) (X : Vecterval n) :
+  ∀ x ∈ X, eval S x ∈ vectervalEvalWithPrec prec S X := by
+  grind only [eval, vectervalEvalWithPrec, Vecterval.mem_iff, get_ofFn, vecterval_eval_sound]
+
+theorem mvt_real_sys (S : System m n) (X : Vecterval n) :
+  ∀ x ∈ X, ∀ i, ∃ ξ ∈ X, (toMvRealPoly (S.get i)).eval x.get =
+  (toMvRealPoly (S.get i)).eval X.midpoint_real.get +
+  (fderiv (S.get i) ξ.get) (x.get - X.midpoint_real.get) := by
+  intro x hx i
+  exact mvt_real_poly (S.get i) X x hx
+
+def gradient (p : MvRatPol n) : System n n := ofFn (fun i ↦ pderiv i p)
+
+def jacobianEvalWithPrec (prec : ℤ) (S : System m n) (X : Vecterval n): Matrival m n :=
+  let F : Fin m → Fin n → MvRatPol n := fun i j ↦ pderiv j (S.get i)
+  Matrival.ofFn (fun i j ↦ (F i j).vectervalEvalWithPrec prec X)
+
+theorem jacobian_sound (prec : ℤ) (S : System m n) (X Y : Vecterval n) (x y : Vector ℝ n)
+  (hx : x ∈ X) (hy : y ∈ Y) : ∀ i, (S.get i).fderiv x.get y.get ∈ ((jacobianEvalWithPrec prec S X) * Y).get i := by
+  intro i
+  change ((Vector.get S i).fderiv x.get) y.get ∈ Vector.get ((jacobianEvalWithPrec prec S X).mulVec Y) i
+  simp only [MvRatPol.fderiv, map_sum, map_smul, ContinuousLinearMap.coe_sum',
+    ContinuousLinearMap.coe_smul', LinearMap.coe_toContinuousLinearMap', LinearMap.coe_proj,
+    Finset.sum_apply, Pi.smul_apply, Function.eval, smul_eq_mul]
+  simp only [Matrival.mulVec, Matrix.mulVecᵣ, Matrix.dotProductᵣ_eq, dotProduct,
+    jacobianEvalWithPrec, FinVec.map_eq, Vecterval.get_ofFn, Function.comp_apply]
+  apply Vecterval.sum_sound
+  simp only [Finset.mem_univ, forall_const]; intro j
+  apply mul_sound
+  · simp only [Matrival.get_ofFn]
+    apply MvRatPol.vecterval_eval_sound
+    exact hx
+  · exact (hy j)
+
+end MvRatPolynomialSystem
+end System
 
 -- open MvRatPol Matrival
 -- def p₁ : MvRatPol 2 := [(2, #v[1, 0]), (1, #v[0,2])] -- 2x + y^2
