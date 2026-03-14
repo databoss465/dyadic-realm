@@ -59,7 +59,6 @@ theorem toRat_zsmul (z : ℤ) (x : Dyadic) : toRat (z • x) = z • x.toRat := 
   change (z * x).toRat = z • x.toRat
   simp only [toRat_mul, toRat_intCast, zsmul_eq_mul]
 
-
 -- toRat_ofOdd_eq_mul_two_pow : toRat (.ofOdd n k hn) = n * 2 ^ (-k)
 theorem shiftRight_toRat (a : Dyadic) (i : Int) :
   (a.shiftRight i).toRat = a.toRat * 2 ^ (-i) := by
@@ -150,6 +149,21 @@ instance : CommRing Dyadic := Function.Injective.commRing toRat
   toRat_zero toRat_one toRat_add toRat_mul toRat_neg toRat_sub
   toRat_nsmul toRat_zsmul toRat_pow toRat_natCast toRat_intCast
 
+instance : AddLeftMono Dyadic where
+  elim := by
+    intro a b₁ b₂ h
+    grind only [← toRat_le_toRat_iff, toRat_add, toRat_le_toRat_iff]
+
+instance : AddRightMono Dyadic where
+  elim := by
+    intro a₁ a₂ b h
+    grind only [← toRat_le_toRat_iff, toRat_add, toRat_le_toRat_iff]
+
+@[simp, grind =]
+lemma toRat_abs {a : Dyadic} : |a|.toRat = |a.toRat| := by
+  change(max a (-a)).toRat = max (a.toRat) (-(a.toRat))
+  simp only [toRat_max, toRat_neg]
+
 end DyadicAddendum
 end Dyadic
 
@@ -180,7 +194,7 @@ structure DyadicInterval where
   deriving DecidableEq
 
 instance : Repr DyadicInterval where
-  reprPrec I _ := s!"[{Dyadic.format I.left}, {Dyadic.format I.right}]"
+  reprPrec I _ := s!"[[{Dyadic.format I.left}, {Dyadic.format I.right}]]"
 
 namespace DyadicInterval
 section DI_Structural
@@ -398,6 +412,13 @@ def midpoint : Dyadic := half (I.left + I.right)
   grind only [left_le_midpoint, midpoint_le_right, ← toRat_le_toRat_iff]
 
 def abs : Dyadic := max |I.left| |I.right|
+
+theorem abs_nonneg : 0 ≤ I.abs := by
+  simp only [abs, le_sup_iff, _root_.abs_nonneg, or_self]
+
+theorem mem_abs_le : ∀ x ∈ I, |x| ≤ ↑(I.abs.toRat) := by
+  simp only [mem_iff_le_endpts, abs, toRat_max, toRat_abs, Rat.cast_max, Rat.cast_abs]
+  intro x hx; apply abs_le_max_abs_abs hx.1 hx.2
 
 end DI_Structural
 

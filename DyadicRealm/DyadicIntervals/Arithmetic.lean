@@ -59,6 +59,10 @@ theorem add_right_cancel : I + J = K + J → I = K := by
 
 theorem add_left_cancel : I + J = I + K → J = K := by grind only [add_comm, add_right_cancel]
 
+theorem abs_add_le : (I + J).abs ≤ I.abs + J.abs := by
+  simp only [abs, left_add_eq, right_add_eq, ← toRat_le_toRat_iff, toRat_add, toRat_max, toRat_abs]
+  apply max_le <;> apply le_trans (_root_.abs_add_le _ _) <;> apply add_le_add <;> grind only [max_def]
+
 theorem add_sound : ∀ x ∈ I, ∀ y ∈ J, x + y ∈ (I + J) := by
   intro x hx y hy
   constructor
@@ -119,7 +123,7 @@ variable (I J K : DyadicInterval){A B : DyadicInterval}(a : Dyadic)(n : ℕ)
 
 def neg (I : DyadicInterval) : DyadicInterval :=
   have h : -I.right ≤ -I.left := by
-     simp only [← toRat_le_toRat_iff, toRat_neg, neg_le_neg_iff, I.isValid_toRat]
+     simp only [← toRat_le_toRat_iff, neg_le_neg_iff, I.isValid_toRat]
   ⟨-I.right, -I.left, h⟩
 
 instance : Neg DyadicInterval := ⟨DyadicInterval.neg⟩
