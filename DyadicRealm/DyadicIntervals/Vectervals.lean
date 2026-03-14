@@ -16,6 +16,16 @@ theorem get_pop {α : Type} {n : ℕ} (v : Vector α (n + 1))(i : Fin n) :
   simp only [get, Nat.add_one_sub_one, pop, Fin.val_cast, Array.getElem_pop, getElem_toArray,
     Fin.val_castSucc]
 
+theorem get_add {α : Type} {n : ℕ} [Add α] (xs ys : Vector α n) :
+  (xs + ys).get = xs.get + ys.get := by
+  change Vector.get (Vector.add xs ys) = Vector.get xs + Vector.get ys
+  ext1 i; simp only [Vector.add, get_eq_getElem, getElem_zipWith, Pi.add_apply]
+
+theorem get_sub {α : Type} {n : ℕ} [Sub α] (xs ys : Vector α n) :
+  (xs - ys).get = xs.get - ys.get := by
+  change Vector.get (Vector.sub xs ys) = Vector.get xs - Vector.get ys
+  ext1 i; simp only [Vector.sub, get_eq_getElem, getElem_zipWith, Pi.sub_apply]
+
 end Vector
 
 abbrev Vecterval (n : ℕ) := Vector DyadicInterval n
@@ -56,13 +66,11 @@ theorem ofFn_get_eq_self : Vecterval.ofFn X.get = X := by
 
 @[simp, grind =]
 theorem get_add : (X + Y).get = X.get + Y.get := by
-  change Vector.get (Vector.add X Y) = Vector.get X + Vector.get Y
-  ext1 i; simp only [Vector.add, get_eq_getElem, getElem_zipWith, Pi.add_apply]
+  simp only [Vector.get_add]
 
 @[simp, grind =]
 theorem get_sub : (X - Y).get = X.get - Y.get := by
-  change Vector.get (Vector.sub X Y) = Vector.get X - Vector.get Y
-  ext1 i; simp only [Vector.sub, get_eq_getElem, getElem_zipWith, Pi.sub_apply]
+  simp only [Vector.get_sub]
 
 @[simp]
 theorem eq_empty {xs : Vecterval 0} : xs = #v[] := by simp only [Vector.eq_empty]
@@ -107,7 +115,6 @@ theorem mem_iff (x : Vector ℝ n) : x ∈ X ↔ ∀ i : Fin n, x.get i ∈ X.ge
 theorem mem_iff_get_mem_toSet (x : Vector ℝ n) : x ∈ X ↔ x.get ∈ X.toSet := by
   simp only [mem_iff, toSet, mem_pi, mem_univ, forall_const]; rfl
 
-@[simp, grind =]
 theorem mem_iff_le_endpts (x : Vector ℝ n) :  x ∈ X ↔ ∀ i : Fin n,
   (X.get i).left.toRat ≤ x.get i ∧ x.get i ≤ (X.get i).right.toRat := by
   simp only [mem_iff, DyadicInterval.mem_iff_le_endpts]
@@ -150,8 +157,17 @@ def maxWidthIdx {n : ℕ} (X : Vecterval (n + 1)) : Fin (n + 1) :=
     if maxWidth X.pop ≤ X.back.width then Fin.last (m + 1)
     else j.castSucc
 
-def abs {n : ℕ} (X : Vecterval n) : Dyadic :=
-  (X.map (fun I ↦ I.abs)).sum
+def norm {n : ℕ} (X : Vecterval n) : Dyadic :=
+  ∑ i : Fin n, (X.get i).abs
+
+theorem norm_nonneg : 0 ≤ X.norm := by
+  apply Finset.sum_nonneg
+  grind only [DyadicInterval.abs_nonneg]
+
+def norm' : NNReal where
+  val := X.norm.toRat
+  property := by
+    simp only [Rat.cast_nonneg, ← toRat_zero, toRat_le_toRat_iff, norm_nonneg]
 
 def dotProduct : DyadicInterval := X.get ⬝ᵥ Y.get
 infixl:72 " ⬝ᵥ " => dotProduct
@@ -159,8 +175,14 @@ infixl:72 " ⬝ᵥ " => dotProduct
 @[simp, grind =]
 theorem dotProduct_comm : X ⬝ᵥ Y = Y ⬝ᵥ X := by simp only [dotProduct, _root_.dotProduct_comm]
 
-lemma fun_mem_iff (f : Fin n → ℝ) : Vector.ofFn f ∈ X ↔ ∀ i, f i ∈ X.get i := by
+@[simp, grind =]
+lemma ofFn_mem_iff (f : Fin n → ℝ) : Vector.ofFn f ∈ X ↔ ∀ i, f i ∈ X.get i := by
   simp only [mem_iff, Vector.get_ofFn]
+
+@[simp, grind =]
+theorem mem_toSet_iff (f : Fin n → ℝ) : f ∈ X.toSet ↔ (Vector.ofFn f) ∈ X := by
+  simp only [toSet, mem_pi, mem_univ, forall_const, mem_iff, Vector.get_ofFn]
+  rfl
 
 lemma sum_sound {ι : Type*} [DecidableEq ι] (s : Finset ι) (f : ι → ℝ) (F : ι → DyadicInterval)
   (h : ∀ i ∈ s, f i ∈ F i) : ∑ i ∈ s, f i ∈ ∑ i ∈ s, F i := by
@@ -181,7 +203,7 @@ theorem dot_product_sound (x y : Fin n → ℝ) (hx : Vector.ofFn x ∈ X)
   unfold dotProduct _root_.dotProduct
   apply sum_sound
   simp only [Finset.mem_univ, forall_const]
-  intro i; simp only [fun_mem_iff] at *
+  intro i; simp only [ofFn_mem_iff] at *
   apply mul_sound <;> grind only
 
 @[grind .]
@@ -437,21 +459,21 @@ abbrev Matrival (m n: ℕ) := Vector (Vecterval n) m
 
 namespace Matrival
 section IntervalMatrix
-open Dyadic DyadicInterval Set Vector
-variable {l m n : ℕ} (A : Matrival m n)
+open Dyadic DyadicInterval Set Vector Matrix
+variable {l m n : ℕ} (A B : Matrival m n)
 
 def get (A : Matrival m n) (i : Fin m) (j : Fin n) : DyadicInterval := (Vector.get A i).get j
-#check A.get
-#check (A.get : Matrix (Fin m) (Fin n) DyadicInterval)
 
 theorem get_eq_getElem (A : Matrival m n) (i : Fin m) (j : Fin n) : A.get i j = A[(i : ℕ)][(j : ℕ)] := rfl
 
 def ofFn (f : Fin m → Fin n → DyadicInterval) : Matrival m n := Vector.ofFn (fun i ↦ Vecterval.ofFn (f i))
 
+@[simp]
 theorem get_ofFn (f : Fin m → Fin n → DyadicInterval) (i : Fin m) (j : Fin n) :
   (Matrival.ofFn f).get i j = f i j := by
   simp only [Matrival.ofFn, Matrival.get, Vector.get_ofFn, Vecterval.get_ofFn]
 
+@[simp]
 theorem getElem_ofFn (f : Fin m → Fin n → DyadicInterval) (i j : ℕ) (h : i < m)
   (h' : j < n) : (Matrival.ofFn f)[i][j] = f ⟨i, h⟩ ⟨j, h'⟩ := by
   simp only [Matrival.ofFn, Vector.getElem_ofFn, Vecterval.getElem_ofFn]
@@ -460,6 +482,9 @@ theorem ofFn_get_eq_self : Matrival.ofFn A.get = A := by
   apply Vector.ext; intro i hi
   apply Vector.ext; intro j hj
   simp only [getElem_ofFn, get_eq_getElem]
+
+@[simp]
+theorem eq_empty {M : Matrival 0 n} : M = #v[] := by simp only [Vector.eq_empty]
 
 def one : Matrival n n := ofFn (1 : Matrix (Fin n) (Fin n) DyadicInterval)
 
@@ -471,13 +496,23 @@ theorem mem_iff (A' : Matrix (Fin m) (Fin n) ℝ) : A' ∈ A ↔ ∀ i, ∀ j, A
 theorem mem_iff_col (A' : Matrix (Fin m) (Fin n) ℝ) : A' ∈ A ↔ ∀ i, Vector.ofFn (A' i) ∈ Vector.get A i := by
   simp only [mem_iff, Vecterval.mem_iff, Vector.get_ofFn, Matrival.get]
 
--- Note : Matrix mul is not sharp!
-def mul (A : Matrival l m) (B : Matrival m n) : Matrival l n :=
-  let A' : Matrix (Fin l) (Fin m) DyadicInterval:= A.get
-  let B' : Matrix (Fin m) (Fin n) DyadicInterval:= B.get
-  Matrival.ofFn (A' * B')
+theorem one_mem : (1 : Matrix (Fin n) (Fin n) ℝ) ∈ Matrival.one := by
+  simp only [one, mem_iff, get_ofFn]; intro i j
+  by_cases heq : i = j
+  · rw [heq, one_apply_eq, one_apply_eq, ← Rat.cast_one, ← toRat_one]
+    change ↑(toRat 1) ∈ ofDyadic 1
+    grind only [to_rat_mem_of_dyadic]
+  · rw [one_apply_ne heq, one_apply_ne heq, ← Rat.cast_zero, ← toRat_zero]
+    change ↑(toRat 0) ∈ ofDyadic 0
+    grind only [to_rat_mem_of_dyadic]
 
-instance : HMul (Matrival l m) (Matrival m n) (Matrival l n) := ⟨mul⟩
+theorem sub_sound {A B : Matrival m n} {A' B': (Matrix (Fin m) (Fin n) ℝ)}
+  (hA : A' ∈ A) (hB : B' ∈ B) : (A' - B') ∈ A - B := by
+  simp only [mem_iff, get, Matrix.sub_apply, Vector.get_sub]; intro i j
+  simp only [Pi.sub_apply, Vecterval.get_sub]
+  change A' i j - B' i j ∈ A.get i j - B.get i j
+  exact DyadicInterval.sub_sound _ _ _ (hA i j) _ (hB i j)
+
 
 def mulVec (A : Matrival m n) (X : Vecterval n) : Vecterval m :=
   let A' : Matrix (Fin m) (Fin n) DyadicInterval:= A.get
@@ -515,6 +550,34 @@ def vecMul (X : Vecterval m) (A : Matrival m n) : Vecterval n :=
 
 instance : HMul (Vecterval m) (Matrival m n) (Vecterval n) := ⟨vecMul⟩
 
+-- theorem vecMul_sound {A : Matrival m n} {X : Vecterval m} {A' : (Matrix (Fin m) (Fin n) ℝ)}
+--   {x : Vector ℝ m} (hA : A' ∈ A) (hX : x ∈ X) : Vector.ofFn (Matrix.vecMul x.get A') ∈ Matrival.vecMul X A := by
+--   sorry
+
+-- theorem vecMul_sound'  {A : Matrival m n} {X : Vecterval m}
+--   {A' : Matrix (Fin m) (Fin n) ℝ} {x : Fin m → ℝ}
+--   (hA : A' ∈ A) (hX : Vector.ofFn x ∈ X) (i : Fin n) :
+--   Matrix.vecMul x A i ∈ Matrix.vecMulᵣ (Vector.get X) A.get i := by
+--   sorry
+
+-- Note : Matrix mul is not sharp!
+def mul (A : Matrival l m) (B : Matrival m n) : Matrival l n :=
+  let A' : Matrix (Fin l) (Fin m) DyadicInterval:= A.get
+  let B' : Matrix (Fin m) (Fin n) DyadicInterval:= B.get
+  Matrival.ofFn (A' * B')
+
+instance : HMul (Matrival l m) (Matrival m n) (Matrival l n) := ⟨mul⟩
+
+theorem mul_sound {A : Matrival l m} {B : Matrival m n} {A' : (Matrix (Fin l) (Fin m) ℝ)}
+  {B' : Matrix (Fin m) (Fin n) ℝ} (hA : A' ∈ A) (hB : B' ∈ B) : A' * B' ∈ A * B := by
+  intro i j
+  change  (A' * B') i j ∈ (Matrival.mul A B).get i j
+  simp only [mul, get_ofFn, Matrix.mul_apply]
+  apply Vecterval.sum_sound
+  simp only [Finset.mem_univ, forall_const]
+  intro k
+  exact DyadicInterval.mul_sound _ _ _ (hA i k) _ (hB k j)
+
 def rat_midpoint : Matrix (Fin m) (Fin n) ℚ := fun i j ↦ ↑(A.get i j).midpoint.toRat
 
 /-- Appriximate Moore-Penrose Pseudoinverse for Rectangular matrices -/
@@ -536,10 +599,42 @@ theorem approx_inverse_mem (prec : ℤ) (A : Matrival m n) : ApproxInverse A ∈
   apply rat_mem_of_rat
 
 def norm (A : Matrival m n) : Dyadic :=
-  let M := A.map (fun X ↦ X.abs)
-  match M.toList with
-  | [] => 0
-  | x :: xs => (x :: xs).max (by grind only)
+  Finset.univ.fold max 0 (fun i ↦ Vecterval.norm (Vector.get A i))
+  -- let M := A.map Vecterval.norm
+  -- match M.toList with
+  -- | [] => 0
+  -- | x :: xs => (x :: xs).max (by grind only)
+
+theorem norm_nonneg (A : Matrival m n) : 0 ≤ A.norm := by
+  simp only [norm]
+  apply (Finset.le_fold_max 0).mpr
+  left; rfl
+
+-- def norm' (A : Matrival m n) : NNReal where
+--   val := ↑A.norm.toRat
+--   property := by
+--     simp only [Rat.cast_nonneg, ← toRat_zero, toRat_le_toRat_iff, norm_nonneg]
+
+def norm' (A : Matrival m n) :=
+  -- Finset.univ.fold max 0 (fun i ↦ Vecterval.norm' (Vector.get A i))
+  Finset.univ.sup (fun i ↦ Vecterval.norm' (Vector.get A i))
+
+#check Matrix.linfty_opNNNorm_eq_opNNNorm
+lemma mem_abs_le_row : ∀ A' ∈ A, ∀ i, ∑ j, ‖A' i j‖ ≤ (Vector.get A i).norm' := by
+  intro A' hA' i; simp only [mem_iff] at hA'
+  have hA₁ : ∀ i, ∀ j, |A' i j| ≤ ↑((A.get i j).abs.toRat)  := by
+    grind only [mem_abs_le]
+  simp only [Real.norm_eq_abs, Vecterval.norm', Vecterval.norm, NNReal.coe_mk]
+  simp only [toRat_sum, Rat.cast_sum]; gcongr with j
+  apply hA₁
+
+theorem mem_abs_le : ∀ A' ∈ A, ∀ i, ∑ j, ‖A' i j‖ ≤ A.norm' := by
+  intro A' hA' i
+  apply le_trans (mem_abs_le_row A _ hA' i)
+  simp only [norm']
+  change (fun j ↦ (Vector.get A j).norm') i ≤ _
+  apply Finset.le_sup (Finset.mem_univ i)
+
 end IntervalMatrix
 end Matrival
 

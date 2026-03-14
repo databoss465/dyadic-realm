@@ -13,6 +13,7 @@ set_option linter.style.commandStart false
 set_option linter.style.longLine false
 set_option linter.unusedVariables false
 set_option linter.style.emptyLine false
+-- set_option pp.all true
 
 
 namespace Vecterval
@@ -58,36 +59,39 @@ def Krawczyk (V : Vecterval n) : Vecterval n :=
   -- Vm - Y * fVm + (I - Y * JX) * (V - Vm)
   V - Y * (fVm + JX * (V - (V.midpoint : Vecterval n)))
 
--- g(y) = y - Yf(y) => g'(y) = I - Yf'(y)
+def contractionFactor (V : Vecterval n) : Dyadic :=
+  let JX := jacobianEvalWithPrec prec S V
+  let Y := ApproxInvWithPrec prec JX
+  let I := @Matrival.one n
+  (I - Y * JX).norm
 
--- noncomputable def pointwiseKrawczyk (S : System m n) (Y : Matrix (Fin n) (Fin m) ℚ) : System n n :=
---   Vector.ofFn (fun (i : Fin n) ↦ X i - (Vector.ofFn (fun j ↦ Y i j • S.get j)).sum)
+def contractionFactor' (V : Vecterval n) : NNReal :=
+  let JX := jacobianEvalWithPrec prec S V
+  let Y := ApproxInvWithPrec prec JX
+  let I := @Matrival.one n
+  (I - Y * JX).norm'
 
--- noncomputable def pointwiseKrawczyk (S : System m n) (Y : Matrix (Fin n) (Fin m) ℚ) : System n n :=
---   Vector.ofFn (fun (i : Fin n) ↦ X i - (∑ j, Y i j • S.get j))
+-- def isContraction  (V : Vecterval n) : Prop := contractionFactor' prec S V < 1
 
 noncomputable def ptwsKrawczyk (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ) (v : Fin n → ℝ) : Fin n →  ℝ :=
-  -- X.eval' v - (Y.mulVecᵣ (S.eval' v))
   v - Y.mulVec (S.eval' v)
 
--- noncomputable def ptwsKrawczyk' (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ) (x : Fin n → ℝ) : Vector ℝ n :=
---   Vector.ofFn (ptwsKrawczyk S Y x)
-
--- theorem krawczyk_mvt (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ) (V : Vecterval n) : ∀ v ∈ V, ∀ i,
---   ptwsKrawczyk S Y v.get i = V.midpoint_real.get i + Y.mulVecᵣ (S.eval' V.midpoint_real.get) i
---   1 - Y * J(X)
---   := sorry
+theorem mem_toSet_iff {n : ℕ} (X : Vecterval n) (f : Fin n → ℝ) : f ∈ X.toSet ↔ (Vector.ofFn f) ∈ X := by
+  sorry
 
 theorem krawczyk_sound (S : System m n) (V : Vecterval n) : ∀ v ∈ V,
-  Vector.ofFn (ptwsKrawczyk S (ApproxInverse (jacobianEvalWithPrec prec S V)) v.get) ∈ Krawczyk prec S V := by
+  (ptwsKrawczyk S (ApproxInverse (jacobianEvalWithPrec prec S V)) v.get) ∈ (Krawczyk prec S V).toSet := by
   generalize h : (jacobianEvalWithPrec prec S V).ApproxInverse = Y
+  intro v hv
+  rw [mem_toSet_iff]
   simp only [mem_iff]
-  intro v hv i
+  intro i
   simp only [ptwsKrawczyk, Vector.get_ofFn, Pi.sub_apply]
   simp only [Krawczyk, Vector.get_eq_getElem, Vector.getElem_sub]
   generalize h' : ApproxInvWithPrec prec (jacobianEvalWithPrec prec S V) = Y'
-  apply sub_sound
-  · simp only [← Vector.get_eq_getElem, hv]
+  apply DyadicInterval.sub_sound
+  · simp only [← Vector.get_eq_getElem]
+    grind only [mem_iff]
   · have : Y' * (System.evalWithPrec prec S (V.midpoint_rat) +
         jacobianEvalWithPrec prec S V * (V - ofVecDyadic V.midpoint)) = Y'.mulVec (System.evalWithPrec prec S (V.midpoint_rat) +
         jacobianEvalWithPrec prec S V * (V - ofVecDyadic V.midpoint)) := by rfl
@@ -118,41 +122,101 @@ theorem krawczyk_sound (S : System m n) (V : Vecterval n) : ∀ v ∈ V,
         · exact hξ
         · simp only [mem_iff, get_sub, Pi.sub_apply]; intro k
           rw [← this]
-          apply sub_sound
+          apply DyadicInterval.sub_sound
           · apply hv
           · simp only [midpoint_real, Vector.get_map, ofVecDyadic, midpoint_rat, to_rat_mem_of_dyadic]
 
-def ptwsKrawczykFDeriv (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ)
-  (f : Fin n → ℝ) : (Fin n → ℝ) →L[ℝ] Fin n → ℝ := by
-  sorry
+noncomputable def ptwsKrawczykFDeriv (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ)
+  (f : Fin n → ℝ) : (Fin n → ℝ) →L[ℝ] Fin n → ℝ :=
+  ContinuousLinearMap.id ℝ (Fin n → ℝ) - (LinearMap.toContinuousLinearMap (Matrix.toLin' Y)).comp
+      (ContinuousLinearMap.pi (fun i ↦ (S.get i).fderiv f))
+
+theorem ptws_krawczyk_fderiv_matrix_comp (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ)
+  (f : Fin n → ℝ) : ptwsKrawczykFDeriv S Y f = LinearMap.toContinuousLinearMap
+  ((1 - Y * (exactJacobian S f))).toLin' := by
+  simp only [ptwsKrawczykFDeriv, map_sub, Matrix.toLin'_one, Matrix.toLin'_mul]
+  have : ContinuousLinearMap.id ℝ (Fin n → ℝ) = LinearMap.toContinuousLinearMap LinearMap.id := by rfl
+  simp only [this, sub_right_inj]
+  change (LinearMap.toContinuousLinearMap (Matrix.toLin' Y)).comp (ContinuousLinearMap.pi fun i ↦ (Vector.get S i).fderiv f) =
+  LinearMap.toContinuousLinearMap (Matrix.toLin' Y ∘ₗ Matrix.toLin' (LinearMap.toMatrix' (ContinuousLinearMap.pi fun i ↦ (Vector.get S i).fderiv f).toLinearMap))
+  simp only [Matrix.toLin'_toMatrix']; congr
 
 theorem ptws_krawczyk_fderiv (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ)
-  (V : Vecterval n) : ∀ x ∈ V.toSet, HasFDerivWithinAt
-  (ptwsKrawczyk S Y) (ptwsKrawczykFDeriv S Y x) V.toSet x := by
-  sorry
+  (V : Vecterval n) : ∀ v ∈ V.toSet, HasFDerivWithinAt
+  (ptwsKrawczyk S Y) (ptwsKrawczykFDeriv S Y v) V.toSet v := by
+  intro v hv
+  unfold ptwsKrawczyk ptwsKrawczykFDeriv
+  apply HasFDerivWithinAt.sub
+  · simp only [hasFDerivWithinAt_pi', ContinuousLinearMap.comp_id]
+    intro i; apply hasFDerivWithinAt_apply
+  · simp only [hasFDerivWithinAt_pi']; intro i
+    -- Rewrite Y * f(x) i as some f ∘ g
+    change HasFDerivWithinAt ((fun y ↦ y i) ∘ (fun x ↦ Y.mulVec (S.eval' x))) ((ContinuousLinearMap.proj i).comp
+    ((LinearMap.toContinuousLinearMap (Matrix.toLin' Y)).comp
+      (ContinuousLinearMap.pi fun i ↦ (Vector.get S i).fderiv v))) V.toSet v
+    apply HasFDerivWithinAt.comp v (hasFDerivWithinAt_apply _ _ _) _ (Set.mapsTo_univ _ _)
+    -- Rewrite Y * f(x) as some f ∘ g
+    change HasFDerivWithinAt ((fun y ↦ Y.mulVec y) ∘ (fun x ↦ S.eval' x)) ((LinearMap.toContinuousLinearMap (Matrix.toLin' Y)).comp (ContinuousLinearMap.pi fun i ↦ (Vector.get S i).fderiv v)) V.toSet v
+    apply HasFDerivWithinAt.comp v _ _ (Set.mapsTo_univ _ _)
+    · -- Rewrite (fun y ↦ Y.mulVec y) as a CtsLinMap
+      change HasFDerivWithinAt ⇑(LinearMap.toContinuousLinearMap (Matrix.toLin' Y)) (LinearMap.toContinuousLinearMap (Matrix.toLin' Y)) Set.univ (S.eval' v)
+      apply ContinuousLinearMap.hasFDerivWithinAt
+    · grind only [hasFDerivWithinAt_pi', ContinuousLinearMap.proj_pi, eval', hasFDerivWithinAt_eval]
 
--- theorem ptws_krawczyk_mvt (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ) (V : Vecterval n)
---   (y : Fin n → ℝ) : ∀ x ∈ V, ∃ ξ,
---   (ptwsKrawczyk S Y x.get) = (ptwsKrawczyk S Y V.midpoint_real.get) +
---   ptwsKrawczykFDeriv S Y ξ y := by sorry
-
-theorem ptws_krawczyk_mapsTo (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ) (V : Vecterval n) :
-  Set.MapsTo (ptwsKrawczyk S Y) V.toSet V.toSet := by
+theorem ptws_krawczyk_mapsTo (S : System m n) (V : Vecterval n) (hK : Krawczyk prec S V ⊆ V):
+  Set.MapsTo (ptwsKrawczyk S (jacobianEvalWithPrec prec S V).ApproxInverse) V.toSet V.toSet := by
   simp only [Set.mapsTo_iff_image_subset, Set.image_subset_iff]
-  intro x hx; simp only [Set.mem_preimage]
-  sorry
+  intro v hv; simp only [Set.mem_preimage]
+  rw [mem_toSet_iff] at hv
+  have : v = (Vector.ofFn v).get := by ext i; simp only [Vector.get_ofFn]
+  rw [this]
+  apply Set.mem_of_mem_of_subset
+  · exact (krawczyk_sound prec S V _ hv)
+  · grind only [= subset_iff_toSet]
 
-instance (K : NNReal) (Y : Matrix (Fin n) (Fin m) ℝ) : ContractingWith K (ptwsKrawczyk S Y) where
-  left := sorry -- Get this from isValidKrawczyk
-  right := sorry -- Get this using Convex.lipschitzOnWith_of_nnnorm_hasFDerivWithin_le
+theorem ptws_krawczyk_deriv_norm_le (S : System m n) (V : Vecterval n) : ∀ v ∈ V.toSet,
+  ‖ptwsKrawczykFDeriv S (ApproxInverse (jacobianEvalWithPrec prec S V)) v‖₊ ≤ contractionFactor' prec S V := by -- 2 is just a placeholder for proof structure
+  intro v hv  --; simp only [ptws_krawczyk_fderiv_matrix_comp]
+  -- apply ContinuousLinearMap.nnnorm_def
+  generalize hM : (1 - (jacobianEvalWithPrec prec S V).ApproxInverse * S.exactJacobian v) = M
+  simp only [ptws_krawczyk_fderiv_matrix_comp, hM, Matrix.toLin'_apply']
+  apply ContinuousLinearMap.opNorm_le_bound
+  · simp only [NNReal.val_eq_coe, NNReal.zero_le_coe]
+  · simp only [LinearMap.coe_toContinuousLinearMap', Matrix.mulVecBilin_apply, NNReal.val_eq_coe]
+    intro x; unfold Matrix.mulVec
+    simp only [_root_.dotProduct]
+    rw [pi_norm_le_iff_of_nonneg (mul_nonneg (NNReal.zero_le_coe) (_root_.norm_nonneg _))]
+    intro i; apply le_trans (norm_sum_le _ _)
+    simp only [norm_mul]
+    have h₁ : ∑ x_1, ‖M i x_1‖ * ‖x x_1‖ ≤ (∑ x_1, ‖M i x_1‖) * ‖x‖ := by
+      rw [Finset.sum_mul]
+      gcongr; apply norm_le_pi_norm
+    apply le_trans h₁; gcongr
+    simp only [contractionFactor']
+    apply Matrival.mem_abs_le
+    rw [← hM]
+    apply sub_sound (one_mem)
+    apply Matrival.mul_sound (approx_inverse_mem prec _) (exact_jacobian_sound prec S V _ hv)
 
 variable (Y : Matrix (Fin n) (Fin m) ℝ) (V : Vecterval n)
 
-#check ptwsKrawczyk S Y
-#check Set.mapsTo_iff_image_subset
-#check @Convex.lipschitzOnWith_of_nnnorm_hasFDerivWithin_le (Fin n → ℝ) _ _ ℝ (Fin n → ℝ) _ _ _ _ _ (ptwsKrawczyk S Y) V.toSet _ 1    (ptws_krawczyk_fderiv S Y V) _ V.convex
-#check LipschitzOnWith.to_restrict
-#check @ContractingWith.exists_fixedPoint' (Fin n → ℝ) _ 1 (ptwsKrawczyk S Y) _ (complete V) (ptws_krawczyk_mapsTo S Y V)
+def lipschitzOnWith := Convex.lipschitzOnWith_of_nnnorm_hasFDerivWithin_le (ptws_krawczyk_fderiv S (jacobianEvalWithPrec prec S V).ApproxInverse V) (ptws_krawczyk_deriv_norm_le prec S V) V.convex
+
+def restrict_lipschitzWith :=
+  LipschitzOnWith.to_restrict (lipschitzOnWith prec S V)
+
+instance KrawczykContraction {V : Vecterval n} (h₁ : Krawczyk prec S V ⊆ V)(h₂ :  contractionFactor' prec S V < 1) :
+  ContractingWith (contractionFactor' prec S V)
+  (Set.MapsTo.restrict (ptwsKrawczyk S (jacobianEvalWithPrec prec S V).ApproxInverse)
+    V.toSet V.toSet (ptws_krawczyk_mapsTo prec S V h₁)) where
+  left := h₂
+  right := restrict_lipschitzWith prec S V -- Get this using Convex.lipschitzOnWith_of_nnnorm_hasFDerivWithin_le
+
+
+variable (h₁ : Krawczyk prec S V ⊆ V)(h₂ :  contractionFactor' prec S V < 1)
+
+#check edist_ne_top
+#check ContractingWith.exists_fixedPoint' (complete V) (ptws_krawczyk_mapsTo prec S V h₁) (KrawczykContraction prec S h₁ h₂)
 
 /-- Jacobian of system evaluated on the interval is non-singular and Krawczyk map is contractive -/
 def isValidKrawczyk (V : Vecterval n) :=

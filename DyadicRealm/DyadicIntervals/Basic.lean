@@ -159,10 +159,21 @@ instance : AddRightMono Dyadic where
     intro a₁ a₂ b h
     grind only [← toRat_le_toRat_iff, toRat_add, toRat_le_toRat_iff]
 
+instance : Std.Associative (Dyadic.add) where
+  assoc := _root_.add_assoc
+
 @[simp, grind =]
 lemma toRat_abs {a : Dyadic} : |a|.toRat = |a.toRat| := by
   change(max a (-a)).toRat = max (a.toRat) (-(a.toRat))
   simp only [toRat_max, toRat_neg]
+
+@[simp]
+lemma toRat_sum {n : ℕ} {f : Fin n → Dyadic} : (∑ i, f i).toRat = ∑ i, (f i).toRat := by
+  induction n with
+  | zero =>
+    simp only [univ_eq_empty, sum_empty, toRat_zero]
+  | succ k ih =>
+    simp only [Fin.sum_univ_castSucc, toRat_add, ih]
 
 end DyadicAddendum
 end Dyadic

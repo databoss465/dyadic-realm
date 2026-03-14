@@ -74,10 +74,12 @@ theorem to_mv_poly_C (n : ℕ) (q : ℚ) : toMvPoly (C n q) = MvPolynomial.C q :
     simp only [get_replicate]
   rw [this, ← MvPolynomial.C_apply]
 
-theorem to_mv_poly_zero (n : ℕ) : toMvPoly (C n 0) = 0 := by
+theorem to_mv_poly_zero (n : ℕ) : toMvPoly (0 : MvRatPol n) = 0 := by
+  change toMvPoly (C n 0) = 0
   simp only [to_mv_poly_C, C_0]
 
-theorem to_mv_poly_one (n : ℕ) : toMvPoly (C n 1) = 1 := by
+theorem to_mv_poly_one (n : ℕ) : toMvPoly (1 : MvRatPol n) = 1 := by
+  change toMvPoly (C n 1) = 1
   simp only [to_mv_poly_C, C_1]
 
 theorem to_mv_real_poly_C (n : ℕ) (q : ℚ) : toMvRealPoly (C n q) = MvPolynomial.C ↑q := by
@@ -501,7 +503,7 @@ variable {m n : ℕ}
 
 def pderivMono (i : Fin n) (coeff : ℚ) (powers : Vector ℕ n) : ℚ × Vector ℕ n :=
   let p := powers.get i
-  if p = 0 then ⟨0, powers⟩
+  if p = 0 then (0, 0)
   else ⟨(coeff * p), powers.set i (p-1)⟩
 
 def pderiv (i : Fin n) (p : MvRatPol n) : MvRatPol n := p.map (fun (a, xs) ↦ pderivMono i a xs)
@@ -535,11 +537,30 @@ lemma pderiv_cons_toMvRealPoly (i : Fin n) (q : ℚ × Vector ℕ n)(qs : MvRatP
   simp [pderiv, List.map_cons, List.map_nil, to_mv_real_poly_cons, to_mv_real_poly_trivial]
 
 theorem pderiv_C (i : Fin n) (c : ℚ) : pderiv i (C n c) = 0 := by
-  sorry
+  simp only [pderiv, C, List.map_cons, List.map_nil, pderivMono]
+  have : replicate n 0 = 0 := by rfl
+  simp only [← this, get_replicate, ↓reduceIte]; rfl
+
+theorem pderiv_zero (i : Fin n) : pderiv i 0 = 0 := by
+  change pderiv i (C n 0) = 0
+  simp only [pderiv_C]
 
 theorem pderiv_X (i j : Fin n) :
   pderiv i (MvRatPol.X j) = if i = j then 1 else 0 := by
-  sorry
+  simp only [pderiv, pderivMono, X, List.map_cons, _root_.one_mul, List.map_nil]
+  split_ifs with h₁ h₂ h₂
+  · grind only [get_eq_getElem, getElem_set_self, one_ne_zero]
+  · rfl
+  · have : replicate n 0 = 0 := rfl
+    simp only [h₂, get_eq_getElem, getElem_set_self, Nat.cast_one, tsub_self, set_set]
+    simp only [← this, set_replicate_self]; rfl
+  · exfalso
+    have h₂' : j.val ≠ i.val := by grind only
+    have : replicate n 0 = 0 := rfl
+    simp only [← this, get_eq_getElem] at h₁
+    have h₁' := @getElem_set_ne _ _ j.val i.val (replicate n 0) 1 j.isLt i.isLt h₂'
+    simp only [getElem_replicate] at h₁'
+    grind only
 
 /-- Frechet derivative is the linear map from ℝ^n → ℝ
   fderiv p x.get y = ∇p(x) · y = Σ i, ((∂p/∂xᵢ)(x)) * yᵢ -/
@@ -577,11 +598,15 @@ theorem fderiv_mono (x : Fin n → ℝ) (q : ℚ × Vector ℕ n) :
   simp only [pderiv_mono]
 
 theorem fderiv_zero (f : Fin n → ℝ) : fderiv 0 f = 0 := by
-  sorry
+  simp only [fderiv, toMvRealPoly, pderiv_zero, to_mv_poly_zero, map_zero, _root_.zero_smul,
+    Finset.sum_const_zero]
 
 theorem fderiv_X (j : Fin n) (f : Fin n → ℝ) :
   fderiv (MvRatPol.X j) f = ContinuousLinearMap.proj j := by
-  sorry
+  simp only [fderiv, pderiv_X, map_sum, map_smul]
+  simp only [toMvRealPoly, apply_ite, to_mv_poly_one, to_mv_poly_zero, map_one, map_zero, ite_smul,
+    one_smul, _root_.zero_smul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
+  rfl
 
 -- theorem fderiv_add (p q: MvRatPol n) (f : Fin n → ℝ) :
 --   fderiv (p + q) f = fderiv p f + fderiv q f :=
@@ -710,7 +735,8 @@ theorem mvt_real_sys (S : System m n) (X : Vecterval n) :
   intro x hx i
   exact mvt_real_poly (S.get i) X x hx
 
-def gradient (p : MvRatPol n) : System n n := ofFn (fun i ↦ pderiv i p)
+noncomputable def exactJacobian (S : System m n) (f : Fin n → ℝ) : Matrix (Fin m) (Fin n) ℝ :=
+  fun i j ↦ ((S.get i).fderiv f) (Pi.single j 1)
 
 def jacobianEvalWithPrec (prec : ℤ) (S : System m n) (X : Vecterval n): Matrival m n :=
   let F : Fin m → Fin n → MvRatPol n := fun i j ↦ pderiv j (S.get i)
@@ -732,6 +758,19 @@ theorem jacobian_sound (prec : ℤ) (S : System m n) (X Y : Vecterval n) (x y : 
     apply MvRatPol.vecterval_eval_sound
     exact hx
   · exact (hy j)
+
+theorem exact_jacobian_sound (prec : ℤ) (S : System m n) (X : Vecterval n) :
+  ∀ x ∈ X.toSet, exactJacobian S x ∈ jacobianEvalWithPrec prec S X := by
+  intro x hx i j
+  simp only [jacobianEvalWithPrec, Matrival.get_ofFn]
+  simp only [exactJacobian, MvRatPol.fderiv, map_sum, map_smul, ContinuousLinearMap.coe_sum',
+    ContinuousLinearMap.coe_smul', LinearMap.coe_toContinuousLinearMap', LinearMap.coe_proj,
+    Finset.sum_apply, Pi.smul_apply, Function.eval, Pi.single_apply, smul_eq_mul, mul_ite,
+    _root_.mul_one, MulZeroClass.mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
+  simp only [Vecterval.mem_toSet_iff] at hx -- Vector.ofFn x ∈ X
+  have h₁ := MvRatPol.vecterval_eval_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ hx
+  have : (ofFn x).get = x := by ext i; simp only [Vector.get_ofFn]
+  grind only
 
 end MvRatPolynomialSystem
 end System
