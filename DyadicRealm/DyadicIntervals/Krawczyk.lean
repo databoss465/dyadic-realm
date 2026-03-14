@@ -76,14 +76,11 @@ def contractionFactor' (V : Vecterval n) : NNReal :=
 noncomputable def ptwsKrawczyk (S : System m n) (Y : Matrix (Fin n) (Fin m) ℝ) (v : Fin n → ℝ) : Fin n →  ℝ :=
   v - Y.mulVec (S.eval' v)
 
-theorem mem_toSet_iff {n : ℕ} (X : Vecterval n) (f : Fin n → ℝ) : f ∈ X.toSet ↔ (Vector.ofFn f) ∈ X := by
-  sorry
-
 theorem krawczyk_sound (S : System m n) (V : Vecterval n) : ∀ v ∈ V,
   (ptwsKrawczyk S (ApproxInverse (jacobianEvalWithPrec prec S V)) v.get) ∈ (Krawczyk prec S V).toSet := by
   generalize h : (jacobianEvalWithPrec prec S V).ApproxInverse = Y
   intro v hv
-  rw [mem_toSet_iff]
+  rw [Vecterval.mem_toSet_iff]
   simp only [mem_iff]
   intro i
   simp only [ptwsKrawczyk, Vector.get_ofFn, Pi.sub_apply]
