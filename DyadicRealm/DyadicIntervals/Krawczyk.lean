@@ -18,7 +18,7 @@ set_option linter.style.emptyLine false
 
 namespace Vecterval
 section VectervalAddendum
-open MvRatPol Vecterval System
+open Set MvRatPol Vecterval System
 variable {m n : ℕ} (prec : ℤ)(p : MvRatPol n) (S : System m n) (X Y : Vecterval n)
 
 def HasRoot' := ∃ x ∈ X, (toMvRealPoly p).eval x.get = 0
@@ -35,13 +35,25 @@ theorem hasRoot_of_hasUniqueRoot (h : X.HasUniqueRoot S) : X.HasRoot S := by
   simp only [HasUniqueRoot, HasRoot] at *
   apply ExistsUnique.exists; exact h
 
-theorem has_no_root_subset (h : X ⊆ Y) (h': Y.HasNoRoot S) : X.HasNoRoot S := by sorry
+theorem has_no_root_subset (h : X ⊆ Y) (h': Y.HasNoRoot S) : X.HasNoRoot S := by
+  intro x hx; apply h'
+  grind only [mem_iff_get_mem_toSet, mem_of_subset_of_mem, subset_iff_toSet]
 
-theorem subset_has_root (h : X ⊆ Y) (h' : X.HasRoot S) : Y.HasRoot S := by sorry
+theorem subset_has_root (h : X ⊆ Y) (h' : X.HasRoot S) : Y.HasRoot S := by
+  simp only [HasRoot] at *
+  obtain ⟨x, hx, hx'⟩ := h'
+  use x; grind only [mem_iff_get_mem_toSet, mem_of_subset_of_mem, subset_iff_toSet]
 
-theorem no_root_of_eval_zerofree (h : ZeroFree (S.vectervalEvalWithPrec prec X)) : X.HasNoRoot S := by sorry
+theorem no_root_of_eval_zerofree (h : ZeroFree (S.vectervalEvalWithPrec prec X)) : X.HasNoRoot S := by
+  intro x hx
+  by_contra h₀
+  have : 0 ∈ (System.vectervalEvalWithPrec prec S X) := by rw [← h₀]; exact System.vecterval_eval_sound _ _ _ _ hx
+  grind only [zerofree_iff_not_mem_zero]
 
-theorem haszero_of_eval (h : X.HasRoot S) : HasZero (S.vectervalEvalWithPrec prec X) := by sorry
+theorem haszero_of_eval (h : X.HasRoot S) : HasZero (S.vectervalEvalWithPrec prec X) := by
+  obtain ⟨x, hx, hx'⟩ := h
+  rw [haszero_iff_mem_zero, ← hx']
+  exact System.vecterval_eval_sound _ _ _ _ hx
 
 end VectervalAddendum
 end Vecterval
@@ -50,6 +62,7 @@ namespace Vecterval
 section KrawczykMethod
 open Dyadic DyadicInterval Vecterval Matrival MvRatPol System
 variable (prec : ℤ) {n m : ℕ} (S : System m n)
+
 -- If required, pass Y as an argument for later convenience
 def Krawczyk (V : Vecterval n) : Vecterval n :=
   let fVm := S.evalWithPrec prec V.midpoint_rat
@@ -172,9 +185,8 @@ theorem ptws_krawczyk_mapsTo (S : System m n) (V : Vecterval n) (hK : Krawczyk p
   · grind only [= subset_iff_toSet]
 
 theorem ptws_krawczyk_deriv_norm_le (S : System m n) (V : Vecterval n) : ∀ v ∈ V.toSet,
-  ‖ptwsKrawczykFDeriv S (ApproxInverse (jacobianEvalWithPrec prec S V)) v‖₊ ≤ contractionFactor' prec S V := by -- 2 is just a placeholder for proof structure
-  intro v hv  --; simp only [ptws_krawczyk_fderiv_matrix_comp]
-  -- apply ContinuousLinearMap.nnnorm_def
+  ‖ptwsKrawczykFDeriv S (ApproxInverse (jacobianEvalWithPrec prec S V)) v‖₊ ≤ contractionFactor' prec S V := by
+  intro v hv
   generalize hM : (1 - (jacobianEvalWithPrec prec S V).ApproxInverse * S.exactJacobian v) = M
   simp only [ptws_krawczyk_fderiv_matrix_comp, hM, Matrix.toLin'_apply']
   apply ContinuousLinearMap.opNorm_le_bound
@@ -195,25 +207,29 @@ theorem ptws_krawczyk_deriv_norm_le (S : System m n) (V : Vecterval n) : ∀ v �
     apply sub_sound (one_mem)
     apply Matrival.mul_sound (approx_inverse_mem prec _) (exact_jacobian_sound prec S V _ hv)
 
-variable (Y : Matrix (Fin n) (Fin m) ℝ) (V : Vecterval n)
-
-def lipschitzOnWith := Convex.lipschitzOnWith_of_nnnorm_hasFDerivWithin_le (ptws_krawczyk_fderiv S (jacobianEvalWithPrec prec S V).ApproxInverse V) (ptws_krawczyk_deriv_norm_le prec S V) V.convex
-
-def restrict_lipschitzWith :=
-  LipschitzOnWith.to_restrict (lipschitzOnWith prec S V)
 
 instance KrawczykContraction {V : Vecterval n} (h₁ : Krawczyk prec S V ⊆ V)(h₂ :  contractionFactor' prec S V < 1) :
   ContractingWith (contractionFactor' prec S V)
   (Set.MapsTo.restrict (ptwsKrawczyk S (jacobianEvalWithPrec prec S V).ApproxInverse)
     V.toSet V.toSet (ptws_krawczyk_mapsTo prec S V h₁)) where
   left := h₂
-  right := restrict_lipschitzWith prec S V -- Get this using Convex.lipschitzOnWith_of_nnnorm_hasFDerivWithin_le
+  right := LipschitzOnWith.to_restrict (Convex.lipschitzOnWith_of_nnnorm_hasFDerivWithin_le (ptws_krawczyk_fderiv S (jacobianEvalWithPrec prec S V).ApproxInverse V) (ptws_krawczyk_deriv_norm_le prec S V) V.convex)
 
+lemma edist_ne_top (V : Vecterval n) : ∀ v ∈ V.toSet, edist v
+  (ptwsKrawczyk S (jacobianEvalWithPrec prec S V).ApproxInverse v) ≠ ⊤ := by
+  intro v hv; apply _root_.edist_ne_top
 
-variable (h₁ : Krawczyk prec S V ⊆ V)(h₂ :  contractionFactor' prec S V < 1)
-
-#check edist_ne_top
-#check ContractingWith.exists_fixedPoint' (complete V) (ptws_krawczyk_mapsTo prec S V h₁) (KrawczykContraction prec S h₁ h₂)
+theorem krawczyk_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Krawczyk prec S V ⊆ V)
+  (hle : contractionFactor' prec S V < 1) : ∃ y ∈ V, (ptwsKrawczyk S
+  (jacobianEvalWithPrec prec S V).ApproxInverse) y.get = y.get := by
+  have hv_mid := ((mem_iff_get_mem_toSet V V.midpoint_real).mp V.midpoint_mem)
+  obtain ⟨y, hy, hy', _ ⟩ := ContractingWith.exists_fixedPoint' (complete V) (ptws_krawczyk_mapsTo prec S V hsub)
+    (KrawczykContraction prec S hsub hle) hv_mid (edist_ne_top prec S V _ hv_mid)
+  have : y = (Vector.ofFn y).get := by
+    ext i; simp only [Vector.get_ofFn]
+  rw [mem_toSet_iff] at hy
+  rw [this] at hy'
+  use Vector.ofFn y, hy, (Function.IsFixedPt.eq hy')
 
 /-- Jacobian of system evaluated on the interval is non-singular and Krawczyk map is contractive -/
 def isValidKrawczyk (V : Vecterval n) :=
@@ -225,7 +241,7 @@ def isValidKrawczyk (V : Vecterval n) :=
 instance (V : Vecterval n) : Decidable (isValidKrawczyk prec S V) := by
   simp only [isValidKrawczyk]; infer_instance
 
-def IsolateRoots (prec : ℤ) {n m : ℕ} (S : System m (n + 1)) (V : Vecterval (n + 1))
+def IsolateRoots (prec : ℤ) (S : System m (n + 1)) (V : Vecterval (n + 1))
   (max_depth : ℕ) (min_width: Dyadic) : List (Vecterval (n + 1)) × List (Vecterval (n + 1)) :=
   if (S.vectervalEvalWithPrec prec V).ZeroFree then ([], [])
     else if isValidKrawczyk prec S V then
