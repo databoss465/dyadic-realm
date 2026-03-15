@@ -220,8 +220,8 @@ lemma edist_ne_top (V : Vecterval n) : ∀ v ∈ V.toSet, edist v
   intro v hv; apply _root_.edist_ne_top
 
 theorem krawczyk_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Krawczyk prec S V ⊆ V)
-  (hle : contractionFactor' prec S V < 1) : ∃ y ∈ V, (ptwsKrawczyk S
-  (jacobianEvalWithPrec prec S V).ApproxInverse) y.get = y.get := by
+  (hle : contractionFactor' prec S V < 1) : ∃ y ∈ V, Function.IsFixedPt (ptwsKrawczyk S
+  (jacobianEvalWithPrec prec S V).ApproxInverse) y.get := by
   have hv_mid := ((mem_iff_get_mem_toSet V V.midpoint_real).mp V.midpoint_mem)
   obtain ⟨y, hy, hy', _ ⟩ := ContractingWith.exists_fixedPoint' (complete V) (ptws_krawczyk_mapsTo prec S V hsub)
     (KrawczykContraction prec S hsub hle) hv_mid (edist_ne_top prec S V _ hv_mid)
@@ -229,7 +229,35 @@ theorem krawczyk_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Krawczyk 
     ext i; simp only [Vector.get_ofFn]
   rw [mem_toSet_iff] at hy
   rw [this] at hy'
-  use Vector.ofFn y, hy, (Function.IsFixedPt.eq hy')
+  use Vector.ofFn y, hy, hy'
+
+lemma krawczyk_restriction_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Krawczyk prec S V ⊆ V)
+  (hle : contractionFactor' prec S V < 1) : ∃ (y : Fin n → ℝ) (hy : y ∈ V.toSet), Function.IsFixedPt (Set.MapsTo.restrict
+  (ptwsKrawczyk S (jacobianEvalWithPrec prec S V).ApproxInverse) V.toSet V.toSet ((ptws_krawczyk_mapsTo prec S V hsub))) ⟨y, hy⟩ := by
+  obtain ⟨y, hy, hy'⟩ := krawczyk_fixedPoint prec hsub hle
+  rw [mem_iff_get_mem_toSet] at hy
+  use y.get, hy
+  exact Subtype.ext hy'
+
+theorem krawczyk_unique_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Krawczyk prec S V ⊆ V)
+  (hle : contractionFactor' prec S V < 1) : ∃! y ∈ V, Function.IsFixedPt (ptwsKrawczyk S
+  (jacobianEvalWithPrec prec S V).ApproxInverse) y.get := by
+  apply existsUnique_of_exists_of_unique
+  · exact krawczyk_fixedPoint prec hsub hle
+  · intro x y ⟨hx, hx'⟩ ⟨hy, hy'⟩
+    rw [mem_iff_get_mem_toSet] at hx hy
+    replace hx' :  Function.IsFixedPt (Set.MapsTo.restrict (ptwsKrawczyk S
+      (jacobianEvalWithPrec prec S V).ApproxInverse) V.toSet V.toSet
+      ((ptws_krawczyk_mapsTo prec S V hsub))) ⟨x.get, hx⟩ := by exact Subtype.ext hx'
+    replace hy' : Function.IsFixedPt (Set.MapsTo.restrict (ptwsKrawczyk S
+      (jacobianEvalWithPrec prec S V).ApproxInverse) V.toSet V.toSet
+      ((ptws_krawczyk_mapsTo prec S V hsub))) ⟨y.get, hy⟩ := by exact Subtype.ext hy'
+    have h := ContractingWith.fixedPoint_unique' (KrawczykContraction prec S hsub hle) hx' hy'
+    simp only [Subtype.mk.injEq] at h
+    replace h := congr_fun h
+    simp only [Vector.get_eq_getElem] at h
+    ext i hi
+    exact h ⟨i, hi⟩
 
 /-- Jacobian of system evaluated on the interval is non-singular and Krawczyk map is contractive -/
 def isValidKrawczyk (V : Vecterval n) :=
