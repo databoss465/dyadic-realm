@@ -513,7 +513,6 @@ theorem sub_sound {A B : Matrival m n} {A' B': (Matrix (Fin m) (Fin n) ℝ)}
   change A' i j - B' i j ∈ A.get i j - B.get i j
   exact DyadicInterval.sub_sound _ _ _ (hA i j) _ (hB i j)
 
-
 def mulVec (A : Matrival m n) (X : Vecterval n) : Vecterval m :=
   let A' : Matrix (Fin m) (Fin n) DyadicInterval:= A.get
   Vecterval.ofFn (A'.mulVecᵣ X.get )
@@ -550,16 +549,6 @@ def vecMul (X : Vecterval m) (A : Matrival m n) : Vecterval n :=
 
 instance : HMul (Vecterval m) (Matrival m n) (Vecterval n) := ⟨vecMul⟩
 
--- theorem vecMul_sound {A : Matrival m n} {X : Vecterval m} {A' : (Matrix (Fin m) (Fin n) ℝ)}
---   {x : Vector ℝ m} (hA : A' ∈ A) (hX : x ∈ X) : Vector.ofFn (Matrix.vecMul x.get A') ∈ Matrival.vecMul X A := by
---   sorry
-
--- theorem vecMul_sound'  {A : Matrival m n} {X : Vecterval m}
---   {A' : Matrix (Fin m) (Fin n) ℝ} {x : Fin m → ℝ}
---   (hA : A' ∈ A) (hX : Vector.ofFn x ∈ X) (i : Fin n) :
---   Matrix.vecMul x A i ∈ Matrix.vecMulᵣ (Vector.get X) A.get i := by
---   sorry
-
 -- Note : Matrix mul is not sharp!
 def mul (A : Matrival l m) (B : Matrival m n) : Matrival l n :=
   let A' : Matrix (Fin l) (Fin m) DyadicInterval:= A.get
@@ -578,7 +567,14 @@ theorem mul_sound {A : Matrival l m} {B : Matrival m n} {A' : (Matrix (Fin l) (F
   intro k
   exact DyadicInterval.mul_sound _ _ _ (hA i k) _ (hB k j)
 
-def rat_midpoint : Matrix (Fin m) (Fin n) ℚ := fun i j ↦ ↑(A.get i j).midpoint.toRat
+def rat_midpoint : Matrix (Fin m) (Fin n) ℚ := fun i j ↦ (A.get i j).midpoint.toRat
+
+def ofRatWithPrec (prec : ℤ) (A : Matrix (Fin m) (Fin n) ℚ) : Matrival m n :=
+  Matrival.ofFn (fun i j ↦ DyadicInterval.ofRatWithPrec prec (A i j))
+
+theorem real_mem_matrival (prec : ℤ) (A : Matrix (Fin m) (Fin n) ℚ) :
+  A.map Rat.cast ∈ ofRatWithPrec prec A := by
+  grind only [ofRatWithPrec, mem_iff, get_ofFn, map_apply, rat_mem_of_rat]
 
 /-- Appriximate Moore-Penrose Pseudoinverse for Rectangular matrices -/
 def ApproxInverse (A : Matrival m n) : Matrix (Fin n) (Fin m) ℝ :=
@@ -589,7 +585,7 @@ def ApproxInverse (A : Matrival m n) : Matrix (Fin n) (Fin m) ℝ :=
 def ApproxInvWithPrec (prec : ℤ) (A : Matrival m n): Matrival n m :=
   let B := (A.rat_midpoint).transpose * (A.rat_midpoint)
   let B' := ((1/B.det) • B.adjugate) * (A.rat_midpoint.transpose)
-  Matrival.ofFn (fun i j ↦ ofRatWithPrec prec (B' i j))
+  Matrival.ofFn (fun i j ↦ DyadicInterval.ofRatWithPrec prec (B' i j))
 
 theorem approx_inverse_mem (prec : ℤ) (A : Matrival m n) : ApproxInverse A ∈ ApproxInvWithPrec prec A := by
   simp only [mem_iff]; intro i j
@@ -600,20 +596,11 @@ theorem approx_inverse_mem (prec : ℤ) (A : Matrival m n) : ApproxInverse A ∈
 
 def norm (A : Matrival m n) : Dyadic :=
   Finset.univ.fold max 0 (fun i ↦ Vecterval.norm (Vector.get A i))
-  -- let M := A.map Vecterval.norm
-  -- match M.toList with
-  -- | [] => 0
-  -- | x :: xs => (x :: xs).max (by grind only)
 
 theorem norm_nonneg (A : Matrival m n) : 0 ≤ A.norm := by
   simp only [norm]
   apply (Finset.le_fold_max 0).mpr
   left; rfl
-
--- def norm' (A : Matrival m n) : NNReal where
---   val := ↑A.norm.toRat
---   property := by
---     simp only [Rat.cast_nonneg, ← toRat_zero, toRat_le_toRat_iff, norm_nonneg]
 
 def norm' (A : Matrival m n) :=
   -- Finset.univ.fold max 0 (fun i ↦ Vecterval.norm' (Vector.get A i))
