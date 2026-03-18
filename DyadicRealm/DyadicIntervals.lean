@@ -2,4 +2,7 @@ import DyadicRealm.DyadicIntervals.Basic
 import DyadicRealm.DyadicIntervals.Arithmetic
 import DyadicRealm.DyadicIntervals.Division
 import DyadicRealm.DyadicIntervals.PolynomialBounds
+import DyadicRealm.DyadicIntervals.PolynomialRoots
 import DyadicRealm.DyadicIntervals.Vectervals
+import DyadicRealm.DyadicIntervals.MvPolynomials
+import DyadicRealm.DyadicIntervals.Krawczyk
