@@ -26,6 +26,9 @@ theorem get_sub {α : Type} {n : ℕ} [Sub α] (xs ys : Vector α n) :
   change Vector.get (Vector.sub xs ys) = Vector.get xs - Vector.get ys
   ext1 i; simp only [Vector.sub, get_eq_getElem, getElem_zipWith, Pi.sub_apply]
 
+theorem get_ofFn' {n : ℕ} (v : Fin n → ℝ) : v = (Vector.ofFn v).get := by
+  ext i; simp only [Vector.get_ofFn]
+
 end Vector
 
 abbrev Vecterval (n : ℕ) := Vector DyadicInterval n
@@ -205,6 +208,14 @@ theorem dot_product_sound (x y : Fin n → ℝ) (hx : Vector.ofFn x ∈ X)
   simp only [Finset.mem_univ, forall_const]
   intro i; simp only [ofFn_mem_iff] at *
   apply mul_sound <;> grind only
+
+theorem add_sound (x y : Vector ℝ n) (hx : x ∈ X) (hy : y ∈ Y) : x + y ∈ X + Y := by
+  simp only [mem_iff, Vector.get_add, Pi.add_apply]; intro i
+  apply DyadicInterval.add_sound _ _ _ (hx i) _ (hy i)
+
+theorem sub_sound (x y : Vector ℝ n) (hx : x ∈ X) (hy : y ∈ Y) : x - y ∈ X - Y := by
+  simp only [mem_iff, Vector.get_sub, Pi.sub_apply]; intro i
+  apply DyadicInterval.sub_sound _ _ _ (hx i) _ (hy i)
 
 @[grind .]
 def lt : Prop := ∀ i, X.get i < Y.get i

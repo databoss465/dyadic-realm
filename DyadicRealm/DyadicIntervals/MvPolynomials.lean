@@ -22,6 +22,9 @@ lemma zip_push {α : Type _} {n : ℕ} {β : Type _} {as : Vector α n} {bs : Ve
   simp only [← append_singleton, zip_append]
   simp only [mk_zip_mk, List.zip_toArray, List.zip_cons_cons, List.zip_nil_right, append_singleton]
 
+theorem ofFn_get {α : Type _} {n : ℕ} (v : Vector α n) : ofFn (v.get) = v := by
+  ext i hi; simp only [getElem_ofFn, get_eq_getElem]
+
 end Vector
 
 /-- List of Coeff, Monomial pairs; where monomial is represented by its power in each variable; ℝ^k → ℝ -/
@@ -729,7 +732,7 @@ theorem vecterval_eval_sound (prec : ℤ) (S : System m n) (X : Vecterval n) :
   grind only [eval, vectervalEvalWithPrec, Vecterval.mem_iff, get_ofFn, vecterval_eval_sound]
 
 theorem mvt_real_sys (S : System m n) (X : Vecterval n) :
-  ∀ x ∈ X, ∀ i, ∃ ξ ∈ X, (toMvRealPoly (S.get i)).eval x.get =
+  ∀ x ∈ X, ∀ i, ∃ ξ ∈ X, (S.eval' x.get) i =
   (toMvRealPoly (S.get i)).eval X.midpoint_real.get +
   (fderiv (S.get i) ξ.get) (x.get - X.midpoint_real.get) := by
   intro x hx i
@@ -771,6 +774,48 @@ theorem exact_jacobian_sound (prec : ℤ) (S : System m n) (X : Vecterval n) :
   have h₁ := MvRatPol.vecterval_eval_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ hx
   have : (ofFn x).get = x := by ext i; simp only [Vector.get_ofFn]
   grind only
+
+noncomputable def mixedJacobian (S : System m n) (ξ : Fin m → (Fin n → ℝ)) : Matrix (Fin m) (Fin n) ℝ :=
+  fun i j ↦ ((S.get i).fderiv (ξ i)) (Pi.single j 1)
+
+theorem mixedJacobian_sound (prec : ℤ) (S : System m n) (X : Vecterval n) (ξ : Fin m → (Fin n → ℝ))
+  (h : ∀ i, ofFn (ξ i) ∈ X) : mixedJacobian S ξ ∈ jacobianEvalWithPrec prec S X := by
+  unfold mixedJacobian; intro i j
+  simp only [jacobianEvalWithPrec, Matrival.get_ofFn, MvRatPol.fderiv]
+  simp only [map_sum, map_smul, ContinuousLinearMap.coe_sum', ContinuousLinearMap.coe_smul',
+    LinearMap.coe_toContinuousLinearMap', LinearMap.coe_proj, Finset.sum_apply, Pi.smul_apply,
+    Function.eval, smul_eq_mul]
+  simp only [Pi.single_apply, mul_ite, _root_.mul_one, MulZeroClass.mul_zero, Finset.sum_ite_eq',
+    Finset.mem_univ, ↓reduceIte]
+  have := MvRatPol.vecterval_eval_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ (h i)
+  rw [Vector.get_ofFn' (ξ i)]
+  exact MvRatPol.vecterval_eval_sound prec _ _ _ (h i)
+
+lemma mixedJacobian_mulVec_eq (S : System m n) (ξ : Fin m → Fin n → ℝ)
+  (v : Fin n → ℝ) (j : Fin m) :
+  (mixedJacobian S ξ).mulVec v j = ((S.get j).fderiv (ξ j)) v := by
+  unfold mixedJacobian; simp only [Matrix.mulVec]
+  unfold _root_.dotProduct; simp only
+  simp_rw [_root_.mul_comm, ← smul_eq_mul, ← map_smul, ← map_sum]
+  congr 1; ext i
+  simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+  simp only [Pi.single_apply, mul_ite, _root_.mul_one, MulZeroClass.mul_zero, Finset.sum_ite_eq,
+    Finset.mem_univ, ↓reduceIte]
+
+theorem mvt_real_sys' (S : System m n) (X : Vecterval n) : ∀ x ∈ X, ∃ ξ : Fin m → (Fin n → ℝ),
+  (∀ i, ofFn (ξ i) ∈ X) ∧ S.eval' x.get = S.eval' (X.midpoint_real).get
+  + (mixedJacobian S ξ).mulVec (x.get - (X.midpoint_real).get) := by
+  intro x hx; --unfold mixedJacobian
+  obtain h := mvt_real_sys S X x hx
+  let Ξ := fun i : Fin m ↦ (Classical.choose (h i)).get
+  have h' := fun i ↦ Classical.choose_spec (h i)
+  use Ξ; simp only [Ξ]; constructor
+  · intro j; simp only [Vector.ofFn_get]
+    exact (h' j).1
+  · ext j; rw[(h' j).2]
+    unfold eval'
+    simp only [Pi.add_apply, add_right_inj]
+    simp only [mixedJacobian_mulVec_eq]
 
 end MvRatPolynomialSystem
 end System
