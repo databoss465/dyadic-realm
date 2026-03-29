@@ -81,11 +81,11 @@ def S₀ : System 2 2 := #v[s₁, s₂]
 
 #eval! evalWithPrec 5 S₀ #v[1, 1]
 #eval! vectervalEvalWithPrec 5 S₀ V₀
-#eval! isValidKrawczyk 10 S₀ (Y S V₁) V₁
+#eval! isValidKrawczyk 10 S₀ (Y S₀ V₁) V₁
 
-#eval! (IsolateRoots 7 S₀ (Y S) V₀ 10 0)  -- Finds both roots!
-#eval (IsolateRoots 4 S₀ (Y S) V₁ 6 0)    -- Certifies No roots!
-#eval! (IsolateRoots 10 S₀ (Y S) V₂ 4 0)  -- Certifies One root!
+#eval! (IsolateRoots 7 S₀ (Y S₀) V₀ 10 0)  -- Finds both roots!
+#eval (IsolateRoots 4 S₀ (Y S₀) V₁ 6 0)    -- Certifies No roots!
+#eval! (IsolateRoots 10 S₀ (Y S₀) V₂ 4 0)  -- Certifies One root!
 
 
 
