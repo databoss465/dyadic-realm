@@ -45,12 +45,9 @@ end NewtonTesting
 section KrawczykTesting
 open Rat Vecterval Matrival System
 
-def Y (S : System 2 2)(X : Vecterval 2) := (ApproxInvWithPrec 10 (jacobianEvalWithPrec 10 S X)).rat_midpoint
+def Y (S : System 2 2) (X : Vecterval 2) := (ApproxInvWithPrec 10 (jacobianEvalWithPrec 10 S X)).rat_midpoint
 
 -- Circle and Parabola
-def J₁ : DyadicInterval := ⟨(toDyadic (-5/2) 2), (toDyadic (5/2) 2), (by sorry)⟩  --[[-5/2, 5/2]]
-def J₂ : DyadicInterval := ⟨(toDyadic (-5/2) 2), 2, (by sorry)⟩                   -- [[-5/2, 2]]
--- def V : Vecterval 2 := #v[J₁, J₂]
 def V : Vecterval 2 := #v[⟨-5,5, by decide⟩, ⟨-5, 5, by decide⟩]                   --[[-5, 5]] × [[-5, 5]]
 
 def q₁ : MvRatPol 2 := [(1, #v[2, 0]), (1, #v[0, 2]), (-5, #v[0, 0])]     -- x1^2 + x2^2 - 5
@@ -87,6 +84,37 @@ def S₀ : System 2 2 := #v[s₁, s₂]
 #eval (IsolateRoots 4 S₀ (Y S₀) V₁ 6 0)    -- Certifies No roots!
 #eval! (IsolateRoots 10 S₀ (Y S₀) V₂ 4 0)  -- Certifies One root!
 
+-- Degenerate System
+def U : Vecterval 2 := #v[⟨0,1, by grind⟩, ⟨0,1,by grind⟩]
+def t : MvRatPol 2 := [(2, #v[2,0]), (4, #v[1,1]), (-1, #v[0,2]), (-1, #v[0,0])]
+def T : System 2 2 := #v[t, t]
+
+#eval! IsolateRoots 10 T (Y T) U 6 0
+
+-- Tangent System
+def W₀ : Vecterval 2 := #v[⟨-1,0, by grind⟩, ⟨0,1,by grind⟩] -- Multiple root
+def W₁ : Vecterval 2 := #v[⟨0,1, by grind⟩,
+  ⟨(toDyadic (-3/2) 2),(toDyadic (3/2) 2),by grind⟩] -- 2 Roots
+def r₁ : MvRatPol 2 := [(1, #v[2, 0]), (-2/3, #v[1, 0]), (1, #v[0, 2]), (-8/9, #v[0,0])]
+def r₂ : MvRatPol 2 := [(-1, #v[1, 0]), (1, #v[0, 2]), (-2/3, #v[0,0])]
+def R : System 2 2 := #v[r₁, r₂]
+
+#eval! IsolateRoots 10 R (Y R) W₁ 10 0
+#eval! IsolateRoots 10 R (Y R) W₀ 10 0
 
 
+-- 3x3 system
+def Y' (S : System 3 3) (X : Vecterval 3) := (ApproxInvWithPrec 10 (jacobianEvalWithPrec 10 S X)).rat_midpoint
+
+def X : Vecterval 3 := Vector.replicate 3 ⟨(toDyadic (-3/2) 2),(toDyadic (3/2) 2),by grind⟩
+def X' : Vecterval 3 := Vector.replicate 3 ⟨(toDyadic (-3/2) 2),0,by sorry⟩
+
+def a₁ : MvRatPol 3 := [(1, #v[2, 0, 0]), (1, #v[0, 2, 0]), (1, #v[0, 0, 2]), (-3, #v[0, 0, 0])]
+def a₂ : MvRatPol 3 := [(1, #v[2, 0, 0]), (-1, #v[0, 1, 0]), (-1, #v[0, 0, 1]), (1, #v[0, 0, 0])]
+def a₃ : MvRatPol 3 := [(1, #v[1, 0, 0]), (-1, #v[0, 1, 0]), (1, #v[0, 0, 1]), (-1, #v[0, 0, 0])]
+def A : System 3 3 := #v[a₁, a₂, a₃]
+
+#eval vectervalEvalWithPrec 5 A X
+#eval IsolateRoots 10 A (Y' A) X 9 0
+#eval! IsolateRoots 10 A (Y' A) X' 9 0
 end KrawczykTesting
