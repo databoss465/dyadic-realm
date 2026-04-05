@@ -379,7 +379,7 @@ instance : Decidable (isValidKrawczyk prec S Y V) := by
 
 def IsolateRoots (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
-  (max_depth : ℕ) (min_width: Dyadic) : List (Vecterval (n + 1)) × List (Vecterval (n + 1)) :=
+  (max_depth : ℕ) (min_width: Dyadic := 0) : List (Vecterval (n + 1)) × List (Vecterval (n + 1)) :=
   if (S.vectervalEvalWithPrec prec V).ZeroFree then ([], [])
     else if isValidKrawczyk prec S (Y V) V then
       let K := V.Krawczyk prec S (Y V)
@@ -387,7 +387,11 @@ def IsolateRoots (prec : ℤ) (S : System (n+1) (n+1))
       | none => ([], [])
       | some Z => if K ⊆ V then ([V], [])
           else if (Z.maxWidth ≤ min_width) ∨ (max_depth = 0) then ([],[V])
-          else IsolateRoots prec S Y Z (max_depth - 1) (min_width)
+          --else IsolateRoots prec S Y Z (max_depth - 1) (min_width)
+          else let (L, R) := V.split_along (V.maxWidthIdx)
+          let rL := IsolateRoots prec S Y L (max_depth - 1) (min_width)
+          let rR := IsolateRoots prec S Y R (max_depth - 1) (min_width)
+          (rL.1 ++ rR.1, rL.2 ++ rR.2)
     else if max_depth = 0 then ([],[V])
     else let (L, R) := V.split_along (V.maxWidthIdx)
     let rL := IsolateRoots prec S Y L (max_depth - 1) (min_width)
@@ -407,22 +411,18 @@ theorem isolate_roots_empty_of_has_no_roots {n : ℕ} (prec : ℤ) (S : System (
     · split_ifs at h
       · exfalso; grind only
       · exfalso; grind only
-      · rename_i J hJ hI _ ; by_contra hI'
-        have := inter_toSet_some _ _ _ hJ
-        rw [hasNoRoot_iff_not_hasRoot, not_not] at hI'
-        obtain ⟨x, hx, hx'⟩ := hI'
-        have hJ' : J.HasRoot S := by
-          rw [mem_iff_get_mem_toSet] at hx
-          unfold HasRoot; use x; constructor
-          · rw [mem_iff_get_mem_toSet, ← this]
-            apply Set.mem_inter hx
-            rw [← mem_iff_get_mem_toSet]
-            apply has_root_of_krawczyk_has_root _ _ _ hx'
-            grind only [mem_iff_get_mem_toSet]
-          · exact hx'
-        have hN : J.HasNoRoot S := by
-          apply isolate_roots_empty_of_has_no_roots; exact h
-        grind only [hasNoRoot_iff_not_hasRoot]
+      · simp only [Prod.mk.injEq, List.append_eq_nil_iff] at h
+        have h₁ : (IsolateRoots prec S Y (V.split_along V.maxWidthIdx).1
+          (max_depth - 1) min_width) = ([], []) := by grind only
+        have h₂ : (IsolateRoots prec S Y (V.split_along V.maxWidthIdx).2
+          (max_depth - 1) min_width) = ([], []) := by grind only
+        have h₁ : (V.split_along V.maxWidthIdx).1.HasNoRoot S := by
+          apply isolate_roots_empty_of_has_no_roots; exact h₁
+        have h₂ : (V.split_along V.maxWidthIdx).2.HasNoRoot S := by
+          apply isolate_roots_empty_of_has_no_roots; exact h₂
+        unfold HasNoRoot at *; intro x hx
+        grind only [mem_split]
+
   · grind only
   · simp only [Prod.mk.injEq, List.append_eq_nil_iff] at h
     have h₁ : (IsolateRoots prec S Y (V.split_along V.maxWidthIdx).1
@@ -491,7 +491,7 @@ theorem isolate_roots_of_has_unique_root {n : ℕ} (prec : ℤ) (S : System (n+1
           simp only [HasUniqueRoot]
           exact krawczyk_unique_root prec S (Y V) V hsub hlt' hdet
         · simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
-        · grind only
+        · grind only [List.mem_append]
     · grind only
     · grind only [add_tsub_cancel_right, List.mem_append]
 

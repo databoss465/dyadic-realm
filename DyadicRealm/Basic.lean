@@ -1,6 +1,5 @@
 import DyadicRealm.DyadicIntervals
-import Lean
-open Lean Elab Term Meta
+set_option linter.style.longLine false
 
 section NewtonTesting
 open Rat DyadicInterval RatPol
@@ -46,30 +45,77 @@ end NewtonTesting
 section KrawczykTesting
 open Rat Vecterval Matrival System
 
--- Circle and Parabola
-def J₁ : DyadicInterval := ⟨(toDyadic ((-5 : ℚ)/(2 : ℚ)) 2),
-  (toDyadic ((5 : ℚ)/(2 : ℚ)) 2), (by sorry)⟩
-  -- With the interval [[-5/2, 5/2]], all 4 roots are detected
-def J₂ : DyadicInterval := ⟨(toDyadic ((-5 : ℚ)/(2 : ℚ)) 2), 2, (by sorry)⟩ -- [[-5/2, 2]]
-def V : Vecterval 2 := #v[J₁, J₂]
+def Y (S : System 2 2) (X : Vecterval 2) := (ApproxInvWithPrec 10 (jacobianEvalWithPrec 10 S X)).rat_midpoint
 
-def q₁ : MvRatPol 2 := [(1, #v[2, 0]), (1, #v[0, 2]), (-5, #v[0, 0])] -- x1^2 + x2^2 - 5
-def q₂ :  MvRatPol 2 := [(1, #v[2, 0]), (-1, #v[0, 1]), (-3, #v[0, 0])] -- x1^2 - x2 - 3
+-- Circle and Parabola
+def V : Vecterval 2 := #v[⟨-5,5, by decide⟩, ⟨-5, 5, by decide⟩]                   --[[-5, 5]] × [[-5, 5]]
+
+def q₁ : MvRatPol 2 := [(1, #v[2, 0]), (1, #v[0, 2]), (-5, #v[0, 0])]     -- x1^2 + x2^2 - 5
+def q₂ :  MvRatPol 2 := [(1, #v[2, 0]), (-1, #v[0, 1]), (-3, #v[0, 0])]   -- x1^2 - x2 - 3
 def S : System 2 2 := #v[q₁, q₂]
 
-def Y (X : Vecterval 2) := (ApproxInvWithPrec 10 (jacobianEvalWithPrec 10 S X)).rat_midpoint
-def Y' (X : Vecterval 2) := (ApproxInvWithPrec 10 (jacobianEvalWithPrec 10 S X))
-#eval! (Matrival.ofRatWithPrec 10 (Y V))[0] ⊆ (Y' V)[0]
-#eval! (Y V).det ≠ 0
-#eval! (jacobianEvalWithPrec 10 S V)
-#eval! Matrival.norm (Matrival.one - (Y' V) * (jacobianEvalWithPrec 10 S V)) < 1
-
 #eval! vectervalEvalWithPrec 5 S V
-#eval! isValidKrawczyk 10 S (Y V) V
--- At max_depth 13, finds all 4 roots
+#eval! isValidKrawczyk 10 S (Y S V) V
+
+-- At prec 5 and max_depth 10, finds all 4 roots
 -- For smaller intervals, we need less depth to find the roots
-#eval! (IsolateRoots 4 S Y V 13 0)
+#eval! (IsolateRoots 10 S (Y S) V 10)
 
 -- Another 2x2 System
+-- 2 Roots: [[0, 0.5]] × [[0, 0.5]], [[0, 0.5]] × [[0.5, 1]]
+-- Also has a root in [[1, 2]] × [[-2, -3]]
 
+def V₀ : Vecterval 2 := #v[⟨0,(toDyadic (1/2) 2), by sorry⟩, ⟨0,1, by grind⟩]   -- [[0, 1/2]] × [[0, 1]]
+def V₁ : Vecterval 2 := #v[⟨-1,0, by grind⟩, ⟨0,1, by grind⟩]                   -- [[-1, 0]] × [[0, 1]]
+def V₂ : Vecterval 2 := #v[⟨(toDyadic (3/2) 2),2,by sorry⟩,
+  ⟨(toDyadic (-5/2) 2), -2, by sorry⟩]                                         --[[3/2, 2]], [[-5/2, -2]]
+
+
+def s₁ : MvRatPol 2 := [(4, #v[2, 1]), (9/4, #v[1,2]),
+  (-1/2, #v[1, 0]), (-5/2, #v[0,1]), (1, #v[0,0])] -- 4 * x1^2 * x2 + 9/4 * x1 * x2^2 - 1/2 * x1 - 5/2 * x2 + 1
+def s₂ : MvRatPol 2 := [(1, #v[3, 0]), (1, #v[0, 3]), (-3/2, #v[1, 1])] -- x1^3 + x2^3 - 3/2 * x1 * x2
+def S₀ : System 2 2 := #v[s₁, s₂]
+
+#eval! evalWithPrec 5 S₀ #v[1, 1]
+#eval! vectervalEvalWithPrec 5 S₀ V₀
+#eval! isValidKrawczyk 10 S₀ (Y S₀ V₁) V₁
+
+#eval! (IsolateRoots 7 S₀ (Y S₀) V₀ 10)  -- Finds both roots!
+#eval (IsolateRoots 4 S₀ (Y S₀) V₁ 6)    -- Certifies No roots!
+#eval! (IsolateRoots 10 S₀ (Y S₀) V₂ 4)  -- Certifies One root!
+
+-- Degenerate System
+def U : Vecterval 2 := #v[⟨0,1, by grind⟩, ⟨0,1,by grind⟩]
+def t : MvRatPol 2 := [(2, #v[2,0]), (4, #v[1,1]), (-1, #v[0,2]), (-1, #v[0,0])]
+def T : System 2 2 := #v[t, t]
+
+#eval! IsolateRoots 10 T (Y T) U 6
+
+-- Tangent System
+def W₀ : Vecterval 2 := #v[⟨-1,0, by grind⟩, ⟨0,1,by grind⟩] -- Multiple root
+def W₁ : Vecterval 2 := #v[⟨0,1, by grind⟩,
+  ⟨(toDyadic (-3/2) 2),(toDyadic (3/2) 2),by grind⟩] -- 2 Roots
+-- def r₁ : MvRatPol 2 := [(1, #v[2, 0]), (-2/3, #v[1, 0]), (1, #v[0, 2]), (-8/9, #v[0,0])]
+-- def r₂ : MvRatPol 2 := [(-1, #v[1, 0]), (1, #v[0, 2]), (-2/3, #v[0,0])]
+-- def R : System 2 2 := #v[r₁, r₂]
+def R : System 2 2 := poly[x1 ^ 2, -2 / 3 * x1, x2 ^ 2, -8/9 ; -1 * x1, x2 ^ 2, -2/3]
+
+#eval! IsolateRoots 10 R (Y R) W₁ 10
+#eval! IsolateRoots 10 R (Y R) W₀ 13
+
+
+-- 3x3 system
+def Y' (S : System 3 3) (X : Vecterval 3) := (ApproxInvWithPrec 10 (jacobianEvalWithPrec 10 S X)).rat_midpoint
+
+def X : Vecterval 3 := Vector.replicate 3 ⟨(toDyadic (-3/2) 2),(toDyadic (3/2) 2),by grind⟩
+def X' : Vecterval 3 := Vector.replicate 3 ⟨(toDyadic (-3/2) 2),0,by sorry⟩
+
+def a₁ : MvRatPol 3 := [(1, #v[2, 0, 0]), (1, #v[0, 2, 0]), (1, #v[0, 0, 2]), (-3, #v[0, 0, 0])]
+def a₂ : MvRatPol 3 := [(1, #v[2, 0, 0]), (-1, #v[0, 1, 0]), (-1, #v[0, 0, 1]), (1, #v[0, 0, 0])]
+def a₃ : MvRatPol 3 := [(1, #v[1, 0, 0]), (-1, #v[0, 1, 0]), (1, #v[0, 0, 1]), (-1, #v[0, 0, 0])]
+def A : System 3 3 := #v[a₁, a₂, a₃]
+
+#eval vectervalEvalWithPrec 5 A X
+#eval IsolateRoots 10 A (Y' A) X 9
+#eval! IsolateRoots 10 A (Y' A) X' 9
 end KrawczykTesting
