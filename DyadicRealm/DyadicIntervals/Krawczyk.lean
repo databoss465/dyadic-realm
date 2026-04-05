@@ -379,7 +379,7 @@ instance : Decidable (isValidKrawczyk prec S Y V) := by
 
 def IsolateRoots (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
-  (max_depth : ℕ) (min_width: Dyadic) : List (Vecterval (n + 1)) × List (Vecterval (n + 1)) :=
+  (max_depth : ℕ) (min_width: Dyadic := 0) : List (Vecterval (n + 1)) × List (Vecterval (n + 1)) :=
   if (S.vectervalEvalWithPrec prec V).ZeroFree then ([], [])
     else if isValidKrawczyk prec S (Y V) V then
       let K := V.Krawczyk prec S (Y V)

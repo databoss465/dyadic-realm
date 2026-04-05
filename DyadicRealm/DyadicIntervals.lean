@@ -6,3 +6,4 @@ import DyadicRealm.DyadicIntervals.PolynomialRoots
 import DyadicRealm.DyadicIntervals.Vectervals
 import DyadicRealm.DyadicIntervals.MvPolynomials
 import DyadicRealm.DyadicIntervals.Krawczyk
+import DyadicRealm.DyadicIntervals.Syntax
