@@ -15,6 +15,27 @@ set_option linter.unusedVariables false
 set_option linter.style.emptyLine false
 -- set_option pp.all true
 
+/-!
+# Krawczyk Method
+This file contains the implementation and proofs of the Krawczyk method for root isolation
+of systems of multivariate polynomials.
+
+## Main Definitions
+- `Krawczyk`: The Krawczyk operator that maps a `Vecterval` to another `Vecterval` based on the system `S` and a
+  preconditioner matrix `Y`.
+- `ptwsKrawczyk`: The pointwise Krawczyk map from `ℝ^n` to `ℝ^n` that corresponds to the `Krawczyk` operator on `Vecterval`.
+- `ptwsKrawczykFDeriv`: The Fréchet derivative of the pointwise Krawczyk map.
+- `contractionFactor`: Contraction factor of the Krawczyk operator on a `Vecterval`, i.e. `‖I - Y * JX‖`.
+- `IsolateRoots` : A function that returns two lists of `Vecterval` within the input `Vecterval`. The first list
+  contains `Vecterval`s that are certified to each have a unique root of the system, and the second list contains
+  `Vecterval`s that might have a root of the system.
+
+## Main Theorems
+- `krawczyk_sound`: Image of the `Krawczyk` operator contains the image of `ptwsKrawczyk` on any `Vecterval`
+- `ptws_krawczyk_deriv_norm_le` : The norm of the Fréchet derivative of the pointwise Krawczyk map is
+  bounded by the contraction factor.
+- `krawczyk_fixedPoint`: Banach Fixed Point theorem applied to `ptwsKrawczyk`
+-/
 
 namespace Vecterval
 section VectervalAddendum
@@ -239,6 +260,8 @@ lemma edist_ne_top (V : Vecterval n) : ∀ v ∈ V.toSet, edist v
   (ptwsKrawczyk S (Y.map Rat.cast) v) ≠ ⊤ := by
   intro v hv; apply _root_.edist_ne_top
 
+/-- If the Krawczyk map is contractive and maps the `Vecterval` into itself,
+then there is a fixed point of the pointwise Krawczyk map in the `Vecterval` -/
 theorem krawczyk_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Krawczyk prec S Y V ⊆ V)
   (hlt : contractionFactor' prec S Y V < 1) : ∃ y ∈ V, Function.IsFixedPt (ptwsKrawczyk S Y) y.get := by
   have hv_mid := ((mem_iff_get_mem_toSet V V.midpoint_real).mp V.midpoint_mem)
@@ -255,6 +278,8 @@ lemma krawczyk_restriction_fixedPoint {S : System m n} {V : Vecterval n} (hsub :
   use y.get, hy
   exact Subtype.ext hy'
 
+/-- If the Krawczyk map is contractive and maps the `Vecterval` into itself, then there
+is a unique fixed point of the pointwise Krawczyk map in the `Vecterval` -/
 theorem krawczyk_unique_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Krawczyk prec S Y V ⊆ V)
   (hlt : contractionFactor' prec S Y V < 1) : ∃! y ∈ V, Function.IsFixedPt (ptwsKrawczyk S Y) y.get := by
   apply existsUnique_of_exists_of_unique
@@ -272,13 +297,17 @@ theorem krawczyk_unique_fixedPoint {S : System m n} {V : Vecterval n} (hsub : Kr
     ext i hi
     exact h ⟨i, hi⟩
 
+/-- If a root is in the `Vecterval`, then it must be in the Krawczyk image of the `Vecterval` -/
 theorem has_root_of_krawczyk_has_root {S : System m n} {V : Vecterval n}
   {v : Vector ℝ n} (hv : v ∈ V) : S.eval' v.get = 0 → v ∈ (Krawczyk prec S Y V) := by
   intro hz
-  have : (ptwsKrawczyk S Y) v.get = v.get := by simp [ptwsKrawczyk, hz]
+  have : (ptwsKrawczyk S Y) v.get = v.get := by
+    simp only [ptwsKrawczyk, hz, Matrix.mulVec_zero,
+    sub_zero]
   rw [mem_iff_get_mem_toSet, ← this]
   exact krawczyk_sound prec Y S V v hv
 
+/-- If the `Vecterval` and its Krawczyk image are disjoint, then there is no root in the `Vecterval` -/
 theorem krawczyk_disjoint_of_has_no_root {S : System m n} {V : Vecterval n}
   (h : V ⊓ (Krawczyk prec S Y V) = none) : V.HasNoRoot S := by
   by_contra hf; rw [hasNoRoot_iff_not_hasRoot, not_not] at hf
@@ -296,6 +325,8 @@ open Vecterval Matrival MvRatPol System
 variable {m n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
 
+/-- If the Krawczyk map is contractive and maps the `Vecterval` into itself, then a
+fixed point of the pointwise Krawczyk map is a root of the `System` and vice versa -/
 theorem fixed_pt_iff_root (hsub : Krawczyk prec S Y V ⊆ V)
   (hlt : contractionFactor' prec S Y V < 1) (hdet : Y.det ≠ (0 : ℚ)) : ∀ y,
   Function.IsFixedPt (ptwsKrawczyk S Y) y ↔ S.eval' y = 0 := by
@@ -309,6 +340,8 @@ theorem fixed_pt_iff_root (hsub : Krawczyk prec S Y V ⊆ V)
   · rw [← Function.mem_fixedPoints, Function.mem_fixedPoints_iff]
     simp only [ptwsKrawczyk, h, Matrix.mulVec_zero, sub_zero]
 
+/-- If the Krawczyk map is contractive and maps the `Vecterval` into itself, then there is
+a root of the `System` in the `Vecterval` -/
 theorem krawczyk_root (hsub : Krawczyk prec S Y V ⊆ V)
   (hlt : contractionFactor' prec S Y V < 1) (hdet : Y.det ≠ (0 : ℚ)) :
   ∃ y ∈ V, (S.eval' y.get) = 0 := by
@@ -316,6 +349,8 @@ theorem krawczyk_root (hsub : Krawczyk prec S Y V ⊆ V)
   rw [fixed_pt_iff_root prec S Y V hsub hlt hdet] at hy'
   use y, hy, hy'
 
+/-- If the Krawczyk map is contractive and maps the `Vecterval` into itself, then
+there is a unique root of the `System` in the `Vecterval` -/
 theorem krawczyk_unique_root (hsub : Krawczyk prec S Y V ⊆ V)
   (hlt : contractionFactor' prec S Y V < 1) (hdet : Y.det ≠ (0 : ℚ)) :
   ∃! y ∈ V, (S.eval' y.get) = 0 := by
@@ -326,23 +361,6 @@ theorem krawczyk_unique_root (hsub : Krawczyk prec S Y V ⊆ V)
     rw [←fixed_pt_iff_root prec S Y V hsub hlt hdet] at hu hv
     rw [(hy₃ u hu), (hy₃ v hv)]
 
-theorem exists_root_of_mem_krawczyk (v : Vector ℝ (n + 1)) (h_mem : v ∈ V)
-  (h_root : S.eval' v.get = 0) : v ∈ Krawczyk prec S Y V := by
-  have := krawczyk_sound prec Y S V _ h_mem
-  unfold ptwsKrawczyk at this
-  simp only [h_root, Matrix.mulVec_zero, sub_zero, ← mem_iff_get_mem_toSet] at this
-  exact this
-
-theorem krawczyk_empty_of_no_root : V ⊓ Krawczyk prec S Y V = none → V.HasNoRoot S := by
-  intro h; replace h := inter_toSet_none _ _ h
-  rw [← Set.disjoint_iff_inter_eq_empty] at h
-  by_contra hf; rw [hasNoRoot_iff_not_hasRoot, not_not] at hf
-  obtain ⟨x, hx, hx'⟩ := hf
-  replace hx' := exists_root_of_mem_krawczyk prec S Y _ x hx hx'
-  have : ¬ Disjoint V.toSet (Krawczyk prec S Y V).toSet := by
-    rw [Set.not_disjoint_iff_nonempty_inter, Set.inter_nonempty]
-    use x.get; simp only [← mem_iff_get_mem_toSet, hx , hx', and_self]
-  grind only
 
 /-- Jacobian of system evaluated on the interval is non-singular and Krawczyk map is contractive -/
 def isValidKrawczyk :=
@@ -375,6 +393,7 @@ def IsolateRoots (prec : ℤ) (S : System (n+1) (n+1))
     let rR := IsolateRoots prec S Y R (max_depth - 1) (min_width)
     (rL.1 ++ rR.1, rL.2 ++ rR.2)
 
+/-- If `IsolateRoots` returns both lists empty then the `Vecterval` has no root of the `System` -/
 theorem isolate_roots_empty_of_has_no_roots {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
   (max_depth : ℕ) (min_width : Dyadic) :
@@ -429,6 +448,8 @@ lemma lt_norm_iff_lt_norm' (A : Matrival m n) (a : Dyadic) (ha : (0 : ℝ) < a.t
     specialize h i; rw [norm', Subtype.mk_lt_mk, Rat.cast_lt, Dyadic.toRat_lt_toRat_iff] at h
     exact h
 
+/-- If `IsolateRoots` returns `Vecterval`s in the first list and nothing in the second list,
+then each of these `Vecterval`s has a unique root of the `System` -/
 theorem isolate_roots_of_has_unique_root {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
   (max_depth : ℕ) (min_width : Dyadic) :
@@ -543,6 +564,7 @@ lemma isolate_roots_subset {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
           simp only [subset_iff_toSet] at *
           exact subset_trans h h'
 
+/-- If `IsolateRoots` returns a non-empty first list then the input `Vecterval` has a root of the `System` -/
 theorem isolate_roots_of_has_root {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V X : Vecterval (n + 1))
   (Xs Ys : List (Vecterval (n+1))) (max_depth : ℕ) (min_width : Dyadic) :
@@ -555,6 +577,8 @@ theorem isolate_roots_of_has_root {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1)
   apply isolate_roots_subset prec S Y V X max_depth min_width
   left; simp only [h, List.mem_cons, true_or]
 
+/-- If the input `Vecterval` contains a root of the `System` it must be in
+some `Vecterval` in the lists returned by `IsolateRoots` -/
 theorem isolate_roots_sound {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
   (max_depth : ℕ) (min_width : Dyadic) (v : Vector ℝ (n + 1)) (h_mem : v ∈ V)
@@ -575,13 +599,13 @@ theorem isolate_roots_sound {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
     · split
       · exfalso
         rename_i heq
-        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        replace heq := krawczyk_disjoint_of_has_no_root prec (Y V) heq
         grind only [HasNoRoot]
       · use V; simp only [List.mem_cons, List.not_mem_nil, or_false, true_and, h_mem]
     · split
       · exfalso
         rename_i heq
-        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        replace heq := krawczyk_disjoint_of_has_no_root prec (Y V) heq
         grind only [HasNoRoot]
       · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, or_true, h_mem, and_self]
     · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, or_true, h_mem, and_self]
@@ -602,13 +626,13 @@ theorem isolate_roots_sound {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
     · split
       · exfalso
         rename_i heq
-        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        replace heq := krawczyk_disjoint_of_has_no_root prec (Y V) heq
         grind only [HasNoRoot]
       · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, h_mem, and_self]
     · split
       · exfalso
         rename_i heq
-        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        replace heq := krawczyk_disjoint_of_has_no_root prec (Y V) heq
         grind only [HasNoRoot]
       · split_ifs
         · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, or_true, h_mem, and_self]
@@ -619,6 +643,8 @@ theorem isolate_roots_sound {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
       replace h_mem := mem_split V V.maxWidthIdx v h_mem
       grind only
 
+/-- If `IsolateRoots` returns a single `Vecterval` in the first list and nothing in the second list,
+then this `Vecterval` has a unique root of the `System` -/
 theorem isolate_roots_of_unique_root' {n : ℕ} (prec : ℤ)
   (S : System (n+1) (n+1)) (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ)
   (V X : Vecterval (n + 1)) (max_depth : ℕ) (min_width : Dyadic) :
