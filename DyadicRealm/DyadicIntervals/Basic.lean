@@ -51,6 +51,10 @@ def format (d : Dyadic) : String :=
 theorem toRat_one : toRat 1 = 1 := by
   norm_cast
 
+theorem toRat_ofNat (n : ℕ) : (OfNat.ofNat n : Dyadic).toRat = OfNat.ofNat n := by
+  change (↑n : Dyadic).toRat = (↑n : ℚ)
+  exact Dyadic.toRat_natCast n
+
 theorem toRat_nsmul (n : ℕ) (x : Dyadic) : toRat (n • x) = n • x.toRat := by
   change (n * x).toRat = n • x.toRat
   simp only [toRat_mul, toRat_natCast, nsmul_eq_mul]
