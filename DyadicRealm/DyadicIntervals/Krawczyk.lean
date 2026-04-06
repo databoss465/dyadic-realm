@@ -157,46 +157,6 @@ theorem krawczyk_sound (S : System m n) (V : Vecterval n) : ∀ v ∈ V,
         Vector.get_map, Function.comp_apply]; intro k
       apply to_rat_mem_of_dyadic
 
-  -- generalize h' : Matrival.ofRatWithPrec prec Y = Y'
-  -- apply DyadicInterval.sub_sound
-  -- · simp only [← Vector.get_eq_getElem]
-  --   grind only [mem_iff]
-  -- · have : Y' * (System.evalWithPrec prec S (V.midpoint_rat) +
-  --       jacobianEvalWithPrec prec S V * (V - ofVecDyadic V.midpoint)) =
-  --       Y'.mulVec (System.evalWithPrec prec S (V.midpoint_rat) +
-  --       jacobianEvalWithPrec prec S V * (V - ofVecDyadic V.midpoint)) := by rfl
-  --   rw [this]; clear this
-  -- -- · change Y.mulVec (S.eval' v.get) i ∈ (Y'.mulVec (System.evalWithPrec prec S (V.midpoint_rat) + jacobianEvalWithPrec prec S V * (V - ofVecDyadic V.midpoint)))[↑i]
-  --   simp only [mulVec, getElem_ofFn, Fin.eta]
-  --   apply mulVec_sound'
-  --   · rw [← h']
-  --     exact real_mem_matrival prec Y
-  --     --apply approx_inverse_mem
-
-  --   · simp only [mem_iff, Vector.get_ofFn]; intro j
-  --     obtain ⟨ξ, hξ, hξ'⟩:= mvt_real_sys S V v hv j
-  --     rw [eval', hξ']; clear hξ'
-  --     simp only [Vecterval.get_add]
-  --     apply add_sound
-
-  --     · have h₁ := System.eval_sound prec S V.midpoint_rat
-  --       simp only [midpoint_real]
-  --       simp only [eval, mem_iff, Vector.get_ofFn] at h₁
-  --       exact h₁ j
-
-  --     · have : (v.get - V.midpoint_real.get) = (v - V.midpoint_real).get := by
-  --         ext i; simp only [Pi.sub_apply]
-  --         change v.get i - V.midpoint_real.get i = (Vector.sub v V.midpoint_real).get i
-  --         simp only [Vector.get_eq_getElem, Vector.sub, Vector.getElem_zipWith]
-  --       rw [this]
-  --       apply jacobian_sound
-  --       · exact hξ
-  --       · simp only [mem_iff, get_sub, Pi.sub_apply]; intro k
-  --         rw [← this]
-  --         apply DyadicInterval.sub_sound
-  --         · apply hv
-  --         · simp only [midpoint_real, Vector.get_map, ofVecDyadic, midpoint_rat, to_rat_mem_of_dyadic]
-
 noncomputable def ptwsKrawczykFDeriv
   (f : Fin n → ℝ) : (Fin n → ℝ) →L[ℝ] Fin n → ℝ :=
   ContinuousLinearMap.id ℝ (Fin n → ℝ) - (LinearMap.toContinuousLinearMap (Matrix.toLin' (Y.map Rat.cast))).comp
@@ -366,6 +326,23 @@ theorem krawczyk_unique_root (hsub : Krawczyk prec S Y V ⊆ V)
     rw [←fixed_pt_iff_root prec S Y V hsub hlt hdet] at hu hv
     rw [(hy₃ u hu), (hy₃ v hv)]
 
+theorem exists_root_of_mem_krawczyk (v : Vector ℝ (n + 1)) (h_mem : v ∈ V)
+  (h_root : S.eval' v.get = 0) : v ∈ Krawczyk prec S Y V := by
+  have := krawczyk_sound prec Y S V _ h_mem
+  unfold ptwsKrawczyk at this
+  simp only [h_root, Matrix.mulVec_zero, sub_zero, ← mem_iff_get_mem_toSet] at this
+  exact this
+
+theorem krawczyk_empty_of_no_root : V ⊓ Krawczyk prec S Y V = none → V.HasNoRoot S := by
+  intro h; replace h := inter_toSet_none _ _ h
+  rw [← Set.disjoint_iff_inter_eq_empty] at h
+  by_contra hf; rw [hasNoRoot_iff_not_hasRoot, not_not] at hf
+  obtain ⟨x, hx, hx'⟩ := hf
+  replace hx' := exists_root_of_mem_krawczyk prec S Y _ x hx hx'
+  have : ¬ Disjoint V.toSet (Krawczyk prec S Y V).toSet := by
+    rw [Set.not_disjoint_iff_nonempty_inter, Set.inter_nonempty]
+    use x.get; simp only [← mem_iff_get_mem_toSet, hx , hx', and_self]
+  grind only
 
 /-- Jacobian of system evaluated on the interval is non-singular and Krawczyk map is contractive -/
 def isValidKrawczyk :=
@@ -452,11 +429,10 @@ lemma lt_norm_iff_lt_norm' (A : Matrival m n) (a : Dyadic) (ha : (0 : ℝ) < a.t
     specialize h i; rw [norm', Subtype.mk_lt_mk, Rat.cast_lt, Dyadic.toRat_lt_toRat_iff] at h
     exact h
 
-
 theorem isolate_roots_of_has_unique_root {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
   (max_depth : ℕ) (min_width : Dyadic) :
-∀ X ∈ (IsolateRoots prec S Y V max_depth min_width).1, X.HasUniqueRoot S := by
+  ∀ X ∈ (IsolateRoots prec S Y V max_depth min_width).1, X.HasUniqueRoot S := by
   induction max_depth generalizing V with
   | zero =>
     unfold IsolateRoots; split_ifs with hzf
@@ -494,6 +470,173 @@ theorem isolate_roots_of_has_unique_root {n : ℕ} (prec : ℤ) (S : System (n+1
         · grind only [List.mem_append]
     · grind only
     · grind only [add_tsub_cancel_right, List.mem_append]
+
+lemma isolate_roots_subset {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
+  (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V X : Vecterval (n + 1))
+  (max_depth : ℕ) (min_width : Dyadic) : X ∈ (IsolateRoots prec S Y V max_depth min_width).1 ∨
+  X ∈ (IsolateRoots prec S Y V max_depth min_width).2 → X ⊆ V := by
+  induction max_depth generalizing V with
+  | zero =>
+    simp only [IsolateRoots, or_true, ↓reduceIte]
+    split
+    · grind only [← List.not_mem_nil]
+    · split_ifs with h₁ h₂
+      · split
+        · grind only [→ inter_subset]
+        · grind only [= subset_iff, = List.mem_cons, ← List.not_mem_nil,
+          DyadicInterval.subset_refl]
+      · split
+        · grind only [← List.not_mem_nil]
+        · grind only [= subset_iff, ← List.not_mem_nil, = List.mem_cons,
+          DyadicInterval.subset_refl]
+      · grind only [← List.not_mem_nil, = List.mem_cons, = subset_iff, DyadicInterval.subset_refl]
+
+  | succ d ih =>
+    rw [IsolateRoots]
+    simp only [Nat.add_eq_zero_iff, one_ne_zero, and_false, ↓reduceIte]
+    split
+    · grind only [← List.not_mem_nil]
+    · split_ifs with h₁ h₂
+      · split
+        · grind only [→ inter_subset]
+        · grind only [= subset_iff, = List.mem_cons, ← List.not_mem_nil,
+          DyadicInterval.subset_refl]
+      · split
+        · grind only [← List.not_mem_nil]
+        · split_ifs with heq
+          · grind only [= subset_iff, ← List.not_mem_nil, = List.mem_cons,
+            DyadicInterval.subset_refl]
+          · simp only [add_tsub_cancel_right, List.mem_append]
+            rintro ((h | h) | (h | h))
+            · replace h := ih (V.split_along V.maxWidthIdx).1 (Or.inl h)
+              have h' := left_split_subset V V.maxWidthIdx
+              simp only [subset_iff_toSet] at *
+              exact subset_trans h h'
+            · replace h := ih (V.split_along V.maxWidthIdx).2 (Or.inl h)
+              have h' := right_split_subset V V.maxWidthIdx
+              simp only [subset_iff_toSet] at *
+              exact subset_trans h h'
+            · replace h := ih (V.split_along V.maxWidthIdx).1 (Or.inr h)
+              have h' := left_split_subset V V.maxWidthIdx
+              simp only [subset_iff_toSet] at *
+              exact subset_trans h h'
+            · replace h := ih (V.split_along V.maxWidthIdx).2 (Or.inr h)
+              have h' := right_split_subset V V.maxWidthIdx
+              simp only [subset_iff_toSet] at *
+              exact subset_trans h h'
+      · simp only [add_tsub_cancel_right, List.mem_append]
+        rintro ((h | h) | (h | h))
+        · replace h := ih (V.split_along V.maxWidthIdx).1 (Or.inl h)
+          have h' := left_split_subset V V.maxWidthIdx
+          simp only [subset_iff_toSet] at *
+          exact subset_trans h h'
+        · replace h := ih (V.split_along V.maxWidthIdx).2 (Or.inl h)
+          have h' := right_split_subset V V.maxWidthIdx
+          simp only [subset_iff_toSet] at *
+          exact subset_trans h h'
+        · replace h := ih (V.split_along V.maxWidthIdx).1 (Or.inr h)
+          have h' := left_split_subset V V.maxWidthIdx
+          simp only [subset_iff_toSet] at *
+          exact subset_trans h h'
+        · replace h := ih (V.split_along V.maxWidthIdx).2 (Or.inr h)
+          have h' := right_split_subset V V.maxWidthIdx
+          simp only [subset_iff_toSet] at *
+          exact subset_trans h h'
+
+theorem isolate_roots_of_has_root {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
+  (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V X : Vecterval (n + 1))
+  (Xs Ys : List (Vecterval (n+1))) (max_depth : ℕ) (min_width : Dyadic) :
+  IsolateRoots prec S Y V max_depth min_width = (X :: Xs, Ys) → V.HasRoot S := by
+  intro h
+  have h' := isolate_roots_of_has_unique_root prec S Y V max_depth min_width X
+  simp only [h, List.mem_cons, true_or, forall_const] at h'
+  replace h' := hasRoot_of_hasUniqueRoot _ _ h'
+  apply subset_has_root _ _ _ _ h'
+  apply isolate_roots_subset prec S Y V X max_depth min_width
+  left; simp only [h, List.mem_cons, true_or]
+
+theorem isolate_roots_sound {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
+  (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1))
+  (max_depth : ℕ) (min_width : Dyadic) (v : Vector ℝ (n + 1)) (h_mem : v ∈ V)
+  (h_root : S.eval' v.get = 0) : ∃ X, ((X ∈ (IsolateRoots prec S Y V max_depth min_width).1)
+  ∨ (X ∈ (IsolateRoots prec S Y V max_depth min_width).2)) ∧ v ∈ X := by
+  induction max_depth generalizing V with
+  | zero =>
+    simp only [IsolateRoots, or_true, ↓reduceIte]
+    split_ifs with h₁ h₂ h₃
+    · exfalso
+      replace h₁ := mem_zerofree_neq_zero _ h₁
+      rw [← eval_eq] at h_root
+      have : S.eval v = 0 := by
+        ext i hi; rw [← Vector.get_eq_getElem _ ⟨i,hi⟩]
+        simp only [h_root, Pi.zero_apply, Vector.getElem_zero]
+      replace h₁ := h₁ _ (System.vecterval_eval_sound prec S V v h_mem)
+      grind only
+    · split
+      · exfalso
+        rename_i heq
+        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        grind only [HasNoRoot]
+      · use V; simp only [List.mem_cons, List.not_mem_nil, or_false, true_and, h_mem]
+    · split
+      · exfalso
+        rename_i heq
+        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        grind only [HasNoRoot]
+      · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, or_true, h_mem, and_self]
+    · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, or_true, h_mem, and_self]
+
+  | succ d ih =>
+    rw [IsolateRoots]
+    simp only [Nat.add_eq_zero_iff, one_ne_zero, and_false,
+      or_false, add_tsub_cancel_right, ↓reduceIte]
+    split_ifs with h₁ h₂ h₃
+    · exfalso
+      replace h₁ := mem_zerofree_neq_zero _ h₁
+      rw [← eval_eq] at h_root
+      have : S.eval v = 0 := by
+        ext i hi; rw [← Vector.get_eq_getElem _ ⟨i,hi⟩]
+        simp only [h_root, Pi.zero_apply, Vector.getElem_zero]
+      replace h₁ := h₁ _ (System.vecterval_eval_sound prec S V v h_mem)
+      grind only
+    · split
+      · exfalso
+        rename_i heq
+        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        grind only [HasNoRoot]
+      · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, h_mem, and_self]
+    · split
+      · exfalso
+        rename_i heq
+        replace heq := krawczyk_empty_of_no_root _ _ _ _ heq
+        grind only [HasNoRoot]
+      · split_ifs
+        · use V; simp only [List.not_mem_nil, List.mem_cons, or_false, or_true, h_mem, and_self]
+        · simp only [List.mem_append]
+          replace h_mem := mem_split V V.maxWidthIdx v h_mem
+          grind only
+    · simp only [List.mem_append]
+      replace h_mem := mem_split V V.maxWidthIdx v h_mem
+      grind only
+
+theorem isolate_roots_of_unique_root' {n : ℕ} (prec : ℤ)
+  (S : System (n+1) (n+1)) (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ)
+  (V X : Vecterval (n + 1)) (max_depth : ℕ) (min_width : Dyadic) :
+  IsolateRoots prec S Y V max_depth min_width = ([X], []) → V.HasUniqueRoot S := by
+  intro h
+  apply existsUnique_of_exists_of_unique
+  · apply isolate_roots_of_has_root _ _ _ _ _ _ _ _ _ h
+  · have h' : X ∈ (IsolateRoots prec S Y V max_depth min_width).1 := by
+      simp only [h, List.mem_cons, List.not_mem_nil, or_false]
+    replace h' := isolate_roots_of_has_unique_root _ _ _ _ _ _ _ h'
+    obtain ⟨x, hx, hx'⟩ := h'
+    intro y₁ y₂ ⟨h₁, h₁'⟩ ⟨h₂, h₂'⟩
+    replace h₁ := isolate_roots_sound prec S Y V max_depth min_width _ h₁ h₁'
+    obtain ⟨X₁, hX₁⟩ := h₁
+    replace h₂ := isolate_roots_sound prec S Y V max_depth min_width _ h₂ h₂'
+    obtain ⟨X₂, hX₂⟩ := h₂
+    simp only [h, List.mem_cons, List.not_mem_nil, or_false] at hX₁ hX₂
+    grind only
 
 end KrawczykMethod
 end Vecterval
