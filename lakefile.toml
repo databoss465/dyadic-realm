@@ -1,7 +1,7 @@
-name = "DyadicRealm"
+name = "Krawcheck"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["DyadicRealm"]
+defaultTargets = ["Krawcheck"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -15,10 +15,8 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.27.0-rc1"
 
-[[require]]
-name = "leancert"
-git = "https://github.com/alerad/leancert"
-rev = "main"
+[[lean_lib]]
+name = "Krawcheck"
 
 [[lean_lib]]
-name = "DyadicRealm"
+name = "Krawcheck_tests"

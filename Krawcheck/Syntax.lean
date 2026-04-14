@@ -1,8 +1,8 @@
 import Mathlib
-import DyadicRealm.DyadicIntervals.Basic
-import DyadicRealm.DyadicIntervals.PolynomialBounds
-import DyadicRealm.DyadicIntervals.Vectervals
-import DyadicRealm.DyadicIntervals.MvPolynomials
+import Krawcheck.DyadicIntervals.Basic
+import Krawcheck.DyadicIntervals.Vectervals
+import Krawcheck.PolynomialBounds
+import Krawcheck.MvPolynomials
 import Lean
 
 section PolyNomialSyntax

@@ -1,11 +1,8 @@
 import Mathlib
-import DyadicRealm.DyadicIntervals.Basic
-import DyadicRealm.DyadicIntervals.Arithmetic
-import DyadicRealm.DyadicIntervals.Division
-import DyadicRealm.DyadicIntervals.PolynomialBounds
-import DyadicRealm.DyadicIntervals.PolynomialRoots
-import DyadicRealm.DyadicIntervals.Vectervals
-import DyadicRealm.DyadicIntervals.MvPolynomials
+import Krawcheck.DyadicIntervals
+import Krawcheck.PolynomialBounds
+import Krawcheck.PolynomialRoots
+import Krawcheck.MvPolynomials
 
 -- Specify import later
 -- set_option diagnostics true

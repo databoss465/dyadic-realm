@@ -1,9 +1,9 @@
-import DyadicRealm.DyadicIntervals.Basic
-import DyadicRealm.DyadicIntervals.PolynomialBounds
-import DyadicRealm.DyadicIntervals.Vectervals
-import DyadicRealm.DyadicIntervals.MvPolynomials
-import DyadicRealm.DyadicIntervals.Krawczyk
-import DyadicRealm.DyadicIntervals.Syntax
+import Krawcheck.DyadicIntervals.Basic
+import Krawcheck.DyadicIntervals.Vectervals
+import Krawcheck.PolynomialBounds
+import Krawcheck.MvPolynomials
+import Krawcheck.Krawczyk
+import Krawcheck.Syntax
 import Lean
 
 set_option linter.style.commandStart false
@@ -11,9 +11,6 @@ set_option linter.style.commandStart false
 set_option linter.style.longLine false
 
 open Lean Meta Elab Tactic
-
-def Y (S : System 2 2) (X : Vecterval 2) := (Matrival.ApproxInvWithPrec 10
-  (System.jacobianEvalWithPrec 10 S X)).rat_midpoint
 
 def Y_default {n : Nat} (S : System (n + 1) (n + 1)) (V : Vecterval (n + 1)) :=
   (Matrival.ApproxInvWithPrec 10 (System.jacobianEvalWithPrec 10 S V)).rat_midpoint
@@ -77,58 +74,6 @@ elab "krawcheck" : tactic =>
   | _ =>
     restoreState s₀
     throwError "krawcheck failed: Goal must be HasRoot, HasNoRoot, or HasUniqueRoot"
-
-def V₀ : Vecterval 2 := #v[dy[[0,1/2]], dy[[0,1]]]
-def V₁ : Vecterval 2 := #v[dy[[-1,0]], dy[[0,1]]]
-def V₂ : Vecterval 2 := #v[dy[[3/2, 2]], dy[[-5/2, 2]]]
-def S : System 2 2 := poly[x1^3, x2^3, -3/2 * x1 * x2;
-  4 * x1^2 * x2, 9/4 * x1 * x2^2, -1/2 * x1, -5/2 * x2, 1]
-
-/-- info: ([#v[dy[[1/16, 1/8]], dy[[3/8, 7/16]]], #v[dy[[3/8, 7/16]], dy[[11/16, 3/4]]]], []) -/
-#guard_msgs in
-#eval Vecterval.IsolateRoots 10 S (Y S) V₀ 9
--- #eval #v[dy[[1/16, 1/8]], dy[[3/8, 7/16]]]
--- #eval #v[dy[[3/8, 7/16]], dy[[11/16, 3/4]]]
-
-example : (Vecterval.IsolateRoots 10 S (Y S) V₀ 9).1 =
-  [#v[dy[[1/16, 1/8]], dy[[3/8, 7/16]]], #v[dy[[3/8, 7/16]], dy[[11/16, 3/4]]] ] := by native_decide
-
-example : V₀.HasRoot S := by
-  apply krawcheck_has_root 10 9
-  native_decide
-  -- decide +kernel
-
-example : V₀.HasRoot S := by krawcheck
-
-/-- info: ([#v[dy[[25/16, 13/8]], dy[[-133/64, -257/128]]]], []) -/
-#guard_msgs in
-#eval (Vecterval.IsolateRoots 10 S (Y S) V₂ 9)
--- #eval #v[dy[[25/16, 13/8]], dy[[-133/64, -257/128]] ]
-
-example : (Vecterval.IsolateRoots 10 S (Y S) V₂ 9).1 =
-  [#v[dy[[25/16, 13/8]], dy[[-133/64, -257/128]] ] ] := by native_decide
-
-example : (Vecterval.IsolateRoots 10 S (Y S) V₂ 9).2 = [] := by native_decide
-
-example : V₂.HasUniqueRoot S := by
-  apply krawcheck_has_unique_root 10 10
-  <;> native_decide
-  -- <;> decide +kernel
-
-example : V₂.HasUniqueRoot S := by krawcheck
-
-/-- info: ([], []) -/
-#guard_msgs in
-#eval Vecterval.IsolateRoots 1 S (Y S) V₁ 6
-
-example : Vecterval.IsolateRoots 1 S (Y S) V₁ 6 = ([], []) := by native_decide
-
-example : V₁.HasNoRoot S := by
-  apply krawcheck_has_no_root 1 6
-  native_decide
-  -- decide +kernel
-
-example : V₁.HasNoRoot S := by krawcheck
 
 -- Make new lean_lib in lakefile.toml and move testing there
 -- GuardMsgs for all evals... Remove evals from mail lib

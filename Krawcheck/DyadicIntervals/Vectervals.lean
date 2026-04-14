@@ -1,7 +1,7 @@
 import Mathlib
 -- import LeanCert
-import DyadicRealm.DyadicIntervals.Basic
-import DyadicRealm.DyadicIntervals.Arithmetic
+import Krawcheck.DyadicIntervals.Basic
+import Krawcheck.DyadicIntervals.Arithmetic
 -- Specify import later
 -- set_option diagnostics true
 set_option linter.style.commandStart false

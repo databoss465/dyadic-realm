@@ -1,6 +1,6 @@
 import Mathlib
-import DyadicRealm.DyadicIntervals.Basic
-import DyadicRealm.DyadicIntervals.Arithmetic
+import Krawcheck.DyadicIntervals.Basic
+import Krawcheck.DyadicIntervals.Arithmetic
 -- Specify import later
 -- set_option diagnostics true
 set_option linter.style.commandStart false
@@ -481,11 +481,3 @@ theorem div_isotonic (hI : I ⊆ A) (hJ : J ⊆ B) :
   · apply denom_div_isotonic A J prec hJ
 
 end Division
-
--- open DyadicInterval
--- def A : DyadicInterval := ⟨(4 : ℚ).toDyadic 1, (5 : ℚ).toDyadic 1, by rfl⟩
--- def B : DyadicInterval := ⟨(1 : ℚ).toDyadic 1, (1 : ℚ).toDyadic 1, by rfl⟩
--- #check neg_neg (2 : ℝ)
--- #eval! A
--- #eval! B
--- #eval! divWithPrec 4 A B

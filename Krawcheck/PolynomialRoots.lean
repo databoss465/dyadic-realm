@@ -1,8 +1,6 @@
 import Mathlib
-import DyadicRealm.DyadicIntervals.Basic
-import DyadicRealm.DyadicIntervals.Arithmetic
-import DyadicRealm.DyadicIntervals.Division
-import DyadicRealm.DyadicIntervals.PolynomialBounds
+import Krawcheck.DyadicIntervals
+import Krawcheck.PolynomialBounds
 -- Specify import later
 -- set_option diagnostics true
 set_option linter.style.commandStart false

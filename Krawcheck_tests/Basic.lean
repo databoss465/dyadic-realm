@@ -1,4 +1,4 @@
-import DyadicRealm.DyadicIntervals
+import Krawcheck.Krawcheck
 set_option linter.style.longLine false
 
 section NewtonTesting
@@ -52,37 +52,70 @@ def V : Vecterval 2 := #v[⟨-5,5, by decide⟩, ⟨-5, 5, by decide⟩]        
 
 def q₁ : MvRatPol 2 := [(1, #v[2, 0]), (1, #v[0, 2]), (-5, #v[0, 0])]     -- x1^2 + x2^2 - 5
 def q₂ :  MvRatPol 2 := [(1, #v[2, 0]), (-1, #v[0, 1]), (-3, #v[0, 0])]   -- x1^2 - x2 - 3
-def S : System 2 2 := #v[q₁, q₂]
+def S₀ : System 2 2 := #v[q₁, q₂]
 
-#eval! vectervalEvalWithPrec 5 S V
-#eval! isValidKrawczyk 10 S (Y S V) V
+#eval! vectervalEvalWithPrec 5 S₀ V
+#eval! isValidKrawczyk 10 S₀ (Y S₀ V) V
 
 -- At prec 5 and max_depth 10, finds all 4 roots
 -- For smaller intervals, we need less depth to find the roots
-#eval! (IsolateRoots 10 S (Y S) V 10)
+#eval! (IsolateRoots 10 S₀ (Y S₀) V 10)
 
 -- Another 2x2 System
 -- 2 Roots: [[0, 0.5]] × [[0, 0.5]], [[0, 0.5]] × [[0.5, 1]]
 -- Also has a root in [[1, 2]] × [[-2, -3]]
 
-def V₀ : Vecterval 2 := #v[⟨0,(toDyadic (1/2) 2), by sorry⟩, ⟨0,1, by grind⟩]   -- [[0, 1/2]] × [[0, 1]]
-def V₁ : Vecterval 2 := #v[⟨-1,0, by grind⟩, ⟨0,1, by grind⟩]                   -- [[-1, 0]] × [[0, 1]]
-def V₂ : Vecterval 2 := #v[⟨(toDyadic (3/2) 2),2,by sorry⟩,
-  ⟨(toDyadic (-5/2) 2), -2, by sorry⟩]                                         --[[3/2, 2]], [[-5/2, -2]]
+def V₀ : Vecterval 2 := #v[dy[[0,1/2]], dy[[0,1]]]
+def V₁ : Vecterval 2 := #v[dy[[-1,0]], dy[[0,1]]]
+def V₂ : Vecterval 2 := #v[dy[[3/2, 2]], dy[[-5/2, 2]]]
+def S : System 2 2 := poly[x1^3, x2^3, -3/2 * x1 * x2;
+  4 * x1^2 * x2, 9/4 * x1 * x2^2, -1/2 * x1, -5/2 * x2, 1]
 
+/-- info: ([#v[dy[[1/16, 1/8]], dy[[3/8, 7/16]]], #v[dy[[3/8, 7/16]], dy[[11/16, 3/4]]]], []) -/
+#guard_msgs in
+#eval Vecterval.IsolateRoots 10 S (Y_default S) V₀ 9
+-- #eval #v[dy[[1/16, 1/8]], dy[[3/8, 7/16]]]
+-- #eval #v[dy[[3/8, 7/16]], dy[[11/16, 3/4]]]
 
-def s₁ : MvRatPol 2 := [(4, #v[2, 1]), (9/4, #v[1,2]),
-  (-1/2, #v[1, 0]), (-5/2, #v[0,1]), (1, #v[0,0])] -- 4 * x1^2 * x2 + 9/4 * x1 * x2^2 - 1/2 * x1 - 5/2 * x2 + 1
-def s₂ : MvRatPol 2 := [(1, #v[3, 0]), (1, #v[0, 3]), (-3/2, #v[1, 1])] -- x1^3 + x2^3 - 3/2 * x1 * x2
-def S₀ : System 2 2 := #v[s₁, s₂]
+example : (Vecterval.IsolateRoots 10 S (Y_default S) V₀ 9).1 =
+  [#v[dy[[1/16, 1/8]], dy[[3/8, 7/16]]], #v[dy[[3/8, 7/16]], dy[[11/16, 3/4]]] ] := by native_decide
 
-#eval! evalWithPrec 5 S₀ #v[1, 1]
-#eval! vectervalEvalWithPrec 5 S₀ V₀
-#eval! isValidKrawczyk 10 S₀ (Y S₀ V₁) V₁
+example : V₀.HasRoot S := by
+  apply krawcheck_has_root 10 9
+  native_decide
+  -- decide +kernel
 
-#eval! (IsolateRoots 7 S₀ (Y S₀) V₀ 10)  -- Finds both roots!
-#eval (IsolateRoots 4 S₀ (Y S₀) V₁ 6)    -- Certifies No roots!
-#eval! (IsolateRoots 10 S₀ (Y S₀) V₂ 9)  -- Certifies One root!
+example : V₀.HasRoot S := by krawcheck
+
+/-- info: ([#v[dy[[25/16, 13/8]], dy[[-133/64, -257/128]]]], []) -/
+#guard_msgs in
+#eval (Vecterval.IsolateRoots 10 S (Y_default S) V₂ 9)
+-- #eval #v[dy[[25/16, 13/8]], dy[[-133/64, -257/128]] ]
+
+example : (Vecterval.IsolateRoots 10 S (Y_default S) V₂ 9).1 =
+  [#v[dy[[25/16, 13/8]], dy[[-133/64, -257/128]] ] ] := by native_decide
+
+example : (Vecterval.IsolateRoots 10 S (Y_default S) V₂ 9).2 = [] := by native_decide
+
+example : V₂.HasUniqueRoot S := by
+  apply krawcheck_has_unique_root 10 10
+  <;> native_decide
+  -- <;> decide +kernel
+
+example : V₂.HasUniqueRoot S := by krawcheck
+
+/-- info: ([], []) -/
+#guard_msgs in
+#eval Vecterval.IsolateRoots 1 S (Y_default S) V₁ 6
+
+example : Vecterval.IsolateRoots 1 S (Y_default S) V₁ 6 = ([], []) := by native_decide
+
+example : V₁.HasNoRoot S := by
+  apply krawcheck_has_no_root 1 6
+  native_decide
+  -- decide +kernel
+
+example : V₁.HasNoRoot S := by krawcheck
 
 -- Degenerate System
 def U : Vecterval 2 := #v[⟨0,1, by grind⟩, ⟨0,1,by grind⟩]

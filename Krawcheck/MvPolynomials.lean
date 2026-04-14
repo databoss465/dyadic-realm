@@ -1,10 +1,7 @@
 import Mathlib
-import DyadicRealm.DyadicIntervals.Basic
-import DyadicRealm.DyadicIntervals.Arithmetic
-import DyadicRealm.DyadicIntervals.Division
-import DyadicRealm.DyadicIntervals.PolynomialBounds
-import DyadicRealm.DyadicIntervals.PolynomialRoots
-import DyadicRealm.DyadicIntervals.Vectervals
+import Krawcheck.DyadicIntervals
+import Krawcheck.PolynomialBounds
+import Krawcheck.PolynomialRoots
 
 -- Specify import later
 -- set_option diagnostics true
@@ -819,12 +816,3 @@ theorem mvt_real_sys' (S : System m n) (X : Vecterval n) : ∀ x ∈ X, ∃ ξ :
 
 end MvRatPolynomialSystem
 end System
-
--- open MvRatPol Matrival
--- def p₁ : MvRatPol 2 := [(2, #v[1, 0]), (1, #v[0,2])] -- 2x + y^2
--- def p₂ : MvRatPol 2 := [(1, #v[3, 0]), (1, #v[0,3])] -- x + y
--- def p₃ : MvRatPol 2 := [(3, #v[1,1])] -- 3xy
--- def S : System 3 2 := #v[p₁, p₂, p₃]
--- def J := jacobianEvalWithPrec 4 S X
--- def Y' := ApproxInvWithPrec J 4
--- #check Y' * J
