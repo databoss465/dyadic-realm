@@ -209,7 +209,7 @@ structure DyadicInterval where
   deriving DecidableEq
 
 instance : Repr DyadicInterval where
-  reprPrec I _ := s!"[[{Dyadic.format I.left}, {Dyadic.format I.right}]]"
+  reprPrec I _ := s!"dy[[{Dyadic.format I.left}, {Dyadic.format I.right}]]"
 
 namespace DyadicInterval
 section DI_Structural

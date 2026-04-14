@@ -564,18 +564,30 @@ lemma isolate_roots_subset {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
           simp only [subset_iff_toSet] at *
           exact subset_trans h h'
 
+-- theorem isolate_roots_of_has_root {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
+--   (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V X : Vecterval (n + 1))
+--   (Xs Ys : List (Vecterval (n+1))) (max_depth : ℕ) (min_width : Dyadic) :
+--   IsolateRoots prec S Y V max_depth min_width = (X :: Xs, Ys) → V.HasRoot S := by
+--   intro h
+--   have h' := isolate_roots_of_has_unique_root prec S Y V max_depth min_width X
+--   simp only [h, List.mem_cons, true_or, forall_const] at h'
+--   replace h' := hasRoot_of_hasUniqueRoot _ _ h'
+--   apply subset_has_root _ _ _ _ h'
+--   apply isolate_roots_subset prec S Y V X max_depth min_width
+--   left; simp only [h, List.mem_cons, true_or]
+
 /-- If `IsolateRoots` returns a non-empty first list then the input `Vecterval` has a root of the `System` -/
 theorem isolate_roots_of_has_root {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
-  (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V X : Vecterval (n + 1))
-  (Xs Ys : List (Vecterval (n+1))) (max_depth : ℕ) (min_width : Dyadic) :
-  IsolateRoots prec S Y V max_depth min_width = (X :: Xs, Ys) → V.HasRoot S := by
-  intro h
+  (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ) (V : Vecterval (n + 1)) (max_depth : ℕ)
+  (min_width : Dyadic) : 0 < (IsolateRoots prec S Y V max_depth min_width).1.length → V.HasRoot S := by
+  intro h; rw [List.length_pos_iff_exists_cons] at h
+  obtain ⟨X, Xs, hX⟩ := h
   have h' := isolate_roots_of_has_unique_root prec S Y V max_depth min_width X
-  simp only [h, List.mem_cons, true_or, forall_const] at h'
+  simp only [hX, List.mem_cons, true_or, forall_const] at h'
   replace h' := hasRoot_of_hasUniqueRoot _ _ h'
   apply subset_has_root _ _ _ _ h'
   apply isolate_roots_subset prec S Y V X max_depth min_width
-  left; simp only [h, List.mem_cons, true_or]
+  left; simp only [hX, List.mem_cons, true_or]
 
 /-- If the input `Vecterval` contains a root of the `System` it must be in
 some `Vecterval` in the lists returned by `IsolateRoots` -/
@@ -643,17 +655,39 @@ theorem isolate_roots_sound {n : ℕ} (prec : ℤ) (S : System (n+1) (n+1))
       replace h_mem := mem_split V V.maxWidthIdx v h_mem
       grind only
 
-/-- If `IsolateRoots` returns a single `Vecterval` in the first list and nothing in the second list,
-then this `Vecterval` has a unique root of the `System` -/
+-- theorem isolate_roots_of_unique_root' {n : ℕ} (prec : ℤ)
+--   (S : System (n+1) (n+1)) (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ)
+--   (V X : Vecterval (n + 1)) (max_depth : ℕ) (min_width : Dyadic) :
+--   IsolateRoots prec S Y V max_depth min_width = ([X], []) → V.HasUniqueRoot S := by
+--   intro h
+--   apply existsUnique_of_exists_of_unique
+--   · apply isolate_roots_of_has_root _ _ _ _ _ _ _ _ _ h
+--   · have h' : X ∈ (IsolateRoots prec S Y V max_depth min_width).1 := by
+--       simp only [h, List.mem_cons, List.not_mem_nil, or_false]
+--     replace h' := isolate_roots_of_has_unique_root _ _ _ _ _ _ _ h'
+--     obtain ⟨x, hx, hx'⟩ := h'
+--     intro y₁ y₂ ⟨h₁, h₁'⟩ ⟨h₂, h₂'⟩
+--     replace h₁ := isolate_roots_sound prec S Y V max_depth min_width _ h₁ h₁'
+--     obtain ⟨X₁, hX₁⟩ := h₁
+--     replace h₂ := isolate_roots_sound prec S Y V max_depth min_width _ h₂ h₂'
+--     obtain ⟨X₂, hX₂⟩ := h₂
+--     simp only [h, List.mem_cons, List.not_mem_nil, or_false] at hX₁ hX₂
+--     grind only
+
+/-- If `IsolateRoots` returns ([X],[]), then the input `Vecterval` has a unique root of the `System` -/
 theorem isolate_roots_of_unique_root' {n : ℕ} (prec : ℤ)
   (S : System (n+1) (n+1)) (Y : Vecterval (n + 1) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℚ)
-  (V X : Vecterval (n + 1)) (max_depth : ℕ) (min_width : Dyadic) :
-  IsolateRoots prec S Y V max_depth min_width = ([X], []) → V.HasUniqueRoot S := by
-  intro h
+  (V : Vecterval (n + 1)) (max_depth : ℕ) (min_width : Dyadic) :
+  (IsolateRoots prec S Y V max_depth min_width).1.length = 1 →
+  (IsolateRoots prec S Y V max_depth min_width).2.length = 0 → V.HasUniqueRoot S := by
+  intro h₁ h₂
+  rw [List.length_eq_one_iff] at h₁; obtain ⟨X, h₁⟩ := h₁
+  rw [List.length_eq_zero_iff] at h₂
   apply existsUnique_of_exists_of_unique
-  · apply isolate_roots_of_has_root _ _ _ _ _ _ _ _ _ h
+  · apply isolate_roots_of_has_root prec S Y V max_depth min_width
+    simp only [h₁, List.length_cons, List.length_nil, zero_add, zero_lt_one]
   · have h' : X ∈ (IsolateRoots prec S Y V max_depth min_width).1 := by
-      simp only [h, List.mem_cons, List.not_mem_nil, or_false]
+      simp only [h₁, List.mem_cons, List.not_mem_nil, or_false]
     replace h' := isolate_roots_of_has_unique_root _ _ _ _ _ _ _ h'
     obtain ⟨x, hx, hx'⟩ := h'
     intro y₁ y₂ ⟨h₁, h₁'⟩ ⟨h₂, h₂'⟩
@@ -661,7 +695,7 @@ theorem isolate_roots_of_unique_root' {n : ℕ} (prec : ℤ)
     obtain ⟨X₁, hX₁⟩ := h₁
     replace h₂ := isolate_roots_sound prec S Y V max_depth min_width _ h₂ h₂'
     obtain ⟨X₂, hX₂⟩ := h₂
-    simp only [h, List.mem_cons, List.not_mem_nil, or_false] at hX₁ hX₂
+    simp only [h₁, h₂, List.mem_cons, List.not_mem_nil, or_false] at hX₁ hX₂
     grind only
 
 end KrawczykMethod

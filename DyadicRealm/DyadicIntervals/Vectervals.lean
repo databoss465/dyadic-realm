@@ -42,9 +42,8 @@ variable {n : ℕ} (X Y : Vecterval n)
 instance : Repr (Vecterval n) where
   reprPrec X _ :=
     let intervals := X.toList.map (repr ·)
-    let sep := Std.Format.text " × "
-    let body := Std.Format.joinSep intervals sep
-    Std.Format.group (Std.Format.paren body)
+    let body := Std.Format.joinSep intervals ", "
+    f!"#v[{body}]"
 
 def zero : Vecterval n := replicate _ 0
 instance : Zero (Vecterval n) := ⟨zero⟩

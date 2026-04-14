@@ -13,18 +13,18 @@ def p : RatPol 3 := #v[1, -2, 1] -- x^2 - 2x + 1
 -- Newton Operator cannot fundamentally detect multiple roots.
 
 -- Case 1
-def I₁ : DyadicInterval := ⟨(toDyadic ((-1 : ℚ)/(2 : ℚ)) 2), 2 , (by sorry)⟩ --[[-1/2, 2]]
+def I₁ : DyadicInterval := ⟨(toDyadic (-1/2) 2), 2 , (by sorry)⟩ --[[-1/2, 2]]
 def p₁ : RatPol 3 := #v[-1, 0, 1] -- x^2 - 1
 #eval! IsolateRoots I₁ p₁ 6 5 0 --([[[3/4, 2]]], [])
 
 -- Case 2
-def I₂ : DyadicInterval := ⟨(toDyadic ((-1 : ℚ)/(2 : ℚ)) 2), 1 , (by sorry)⟩ -- [[-1/2, 1]]
+def I₂ : DyadicInterval := ⟨(toDyadic (-1/2) 2), 1 , (by sorry)⟩ -- [[-1/2, 1]]
 def p₂ : RatPol 4 := #v[0, 0, 0, 1] -- x^3
 #eval! IsolateRoots I₂ p₂ 5 5 0 -- ([], [[[-1/32, 1/64]]])
 
 -- Case 3
 def I₃ : DyadicInterval :=
-  ⟨(toDyadic ((5 : ℚ)/(4 : ℚ)) 2), (toDyadic ((3 : ℚ)/(2 : ℚ)) 2), (by sorry)⟩ -- [5/4, 3/2]
+  ⟨(toDyadic ((5/4 : ℚ)) 2), (toDyadic ((3/2)) 2), (by sorry)⟩ -- [5/4, 3/2]
 def p₃ : RatPol 3 := #v[-2, 0, 1] -- x^2 - 2
 #eval! Newton 5 I₃ p₃ ⊆ I₃
 #eval! IsolateRoots I₃ p₃ 5 5 0 -- ([[[5/4, 3/2]]], [])
@@ -82,7 +82,7 @@ def S₀ : System 2 2 := #v[s₁, s₂]
 
 #eval! (IsolateRoots 7 S₀ (Y S₀) V₀ 10)  -- Finds both roots!
 #eval (IsolateRoots 4 S₀ (Y S₀) V₁ 6)    -- Certifies No roots!
-#eval! (IsolateRoots 10 S₀ (Y S₀) V₂ 4)  -- Certifies One root!
+#eval! (IsolateRoots 10 S₀ (Y S₀) V₂ 9)  -- Certifies One root!
 
 -- Degenerate System
 def U : Vecterval 2 := #v[⟨0,1, by grind⟩, ⟨0,1,by grind⟩]
@@ -110,10 +110,11 @@ def Y' (S : System 3 3) (X : Vecterval 3) := (ApproxInvWithPrec 10 (jacobianEval
 def X : Vecterval 3 := Vector.replicate 3 ⟨(toDyadic (-3/2) 2),(toDyadic (3/2) 2),by grind⟩
 def X' : Vecterval 3 := Vector.replicate 3 ⟨(toDyadic (-3/2) 2),0,by sorry⟩
 
-def a₁ : MvRatPol 3 := [(1, #v[2, 0, 0]), (1, #v[0, 2, 0]), (1, #v[0, 0, 2]), (-3, #v[0, 0, 0])]
-def a₂ : MvRatPol 3 := [(1, #v[2, 0, 0]), (-1, #v[0, 1, 0]), (-1, #v[0, 0, 1]), (1, #v[0, 0, 0])]
-def a₃ : MvRatPol 3 := [(1, #v[1, 0, 0]), (-1, #v[0, 1, 0]), (1, #v[0, 0, 1]), (-1, #v[0, 0, 0])]
-def A : System 3 3 := #v[a₁, a₂, a₃]
+-- def a₁ : MvRatPol 3 := [(1, #v[2, 0, 0]), (1, #v[0, 2, 0]), (1, #v[0, 0, 2]), (-3, #v[0, 0, 0])]
+-- def a₂ : MvRatPol 3 := [(1, #v[2, 0, 0]), (-1, #v[0, 1, 0]), (-1, #v[0, 0, 1]), (1, #v[0, 0, 0])]
+-- def a₃ : MvRatPol 3 := [(1, #v[1, 0, 0]), (-1, #v[0, 1, 0]), (1, #v[0, 0, 1]), (-1, #v[0, 0, 0])]
+-- def A : System 3 3 := #v[a₁, a₂, a₃]
+def A : System 3 3 := poly[x1^2, x2^2, x3^2, -3; x1^2, -1*x2, -1*x3, 1; x1, -1*x2, x3, -1]
 
 #eval vectervalEvalWithPrec 5 A X
 #eval IsolateRoots 10 A (Y' A) X 9
