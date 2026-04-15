@@ -1,4 +1,4 @@
-import Krawcheck.Krawcheck
+import Krawcheck
 set_option linter.style.longLine false
 
 section NewtonTesting
