@@ -62,7 +62,6 @@ theorem subset_has_root (h : X ⊆ Y) (h' : X.HasRoot S) : Y.HasRoot S := by
   obtain ⟨x, hx, hx'⟩ := h'
   use x; grind only [mem_iff_get_mem_toSet, mem_of_subset_of_mem, subset_iff_toSet]
 
-#check System.vecterval_eval_sound
 theorem no_root_of_eval_zerofree (h : ZeroFree (S.vectervalEvalWithPrec prec X)) : X.HasNoRoot S := by
   intro x hx
   by_contra h₀

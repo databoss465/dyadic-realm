@@ -259,7 +259,6 @@ def ofRatWithPrec (prec : ℤ) (x : ℚ) : DyadicInterval :=
 
 @[simp, grind .] lemma right_coe : (a : DyadicInterval).right = a := by rfl
 
-#check left_coe 0 -- left_coe 0 : (ofDyadic 0).left = 0
 -- These are written separately to handle some typeclass stuff
 @[simp, grind .] lemma left_coe_zero : (0 : DyadicInterval).left = 0 := by rfl
 

@@ -267,6 +267,16 @@ theorem has_zero_iff_not_zerofree : HasZero X ↔ ¬ ZeroFree X := by grind only
 theorem haszero_iff_mem_zero : HasZero X ↔ 0 ∈ X := by
   grind only [has_zero_iff_not_zerofree, zerofree_iff_not_mem_zero]
 
+/-- `X.flatten k` collapses the first `k` coordinates (indices `< k`) to their
+degenerate midpoint intervals -/
+def flatten (k : Fin n) : Vecterval n :=
+  Vecterval.ofFn (fun j ↦ if j < k then ofDyadic (X.get j).midpoint else X.get j)
+
+@[simp, grind =]
+theorem get_flatten (k j : Fin n) :
+  (X.flatten k).get j = if j < k then ofDyadic (X.get j).midpoint else X.get j := by
+  simp only [flatten, get_ofFn]
+
 end VectervalStructural
 
 section VectervalTopological
@@ -623,7 +633,6 @@ def norm' (A : Matrival m n) :=
   -- Finset.univ.fold max 0 (fun i ↦ Vecterval.norm' (Vector.get A i))
   Finset.univ.sup (fun i ↦ Vecterval.norm' (Vector.get A i))
 
-#check Matrix.linfty_opNNNorm_eq_opNNNorm
 lemma mem_abs_le_row : ∀ A' ∈ A, ∀ i, ∑ j, ‖A' i j‖ ≤ (Vector.get A i).norm' := by
   intro A' hA' i; simp only [mem_iff] at hA'
   have hA₁ : ∀ i, ∀ j, |A' i j| ≤ ↑((A.get i j).abs.toRat)  := by
@@ -641,27 +650,3 @@ theorem mem_abs_le : ∀ A' ∈ A, ∀ i, ∑ j, ‖A' i j‖ ≤ A.norm' := by
 
 end IntervalMatrix
 end Matrival
-
-
--- open DyadicInterval
--- def I₁ := ofRatWithPrec 5 ((7: ℚ)/9)
--- def I₂ := ofRatWithPrec 5 ((1: ℚ)/3)
--- def J₁ := ofRatWithPrec 6 ((2: ℚ)/5)
--- def J₂ := ofRatWithPrec 6 ((3: ℚ)/7)
--- -- def J₁ := ofRatWithPrec 5 ((7: ℚ)/9)
--- -- def J₂ := ofRatWithPrec 5 ((1: ℚ)/3)
--- def X : Vecterval 2 := ⟨#[I₁, I₂], by simp⟩
--- def Y : Vecterval 2 := ⟨#[J₁, J₂], by simp⟩
--- def Z : Vecterval 0 := #v[]
-
--- #eval X[0]
--- #eval Y
--- #eval X ⬝ᵥ Y
--- #eval (1 : Vecterval 2) ⬝ᵥ X
--- #eval (I₁ * J₁) + (I₂ * J₂)
--- #eval (X + Y)
--- #eval (X - Y)
--- #eval X.split_along 0
-
--- def A : Matrix (Fin 2) (Fin 2) DyadicInterval := 1
--- #eval (((A 0 0), (A 0 1)), ((A 1 0), (A 1 1)))

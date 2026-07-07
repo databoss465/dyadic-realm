@@ -729,7 +729,6 @@ theorem powEven_sharp (hn : n % 2 = 0) (hn' : n ≠ 0) : ∀ z ∈ (powEven I n 
     rcases h with ⟨x, hx, hx'⟩
     use x, hx, hx'
 
-#check Rat.mkRat_one 1
 theorem pow_sharp : ∀ z ∈ (I ^ n), ∃ x ∈ I, x ^ n = z := by
   intro z hz
   change z ∈ DyadicInterval.powExact I n at hz

@@ -71,6 +71,11 @@ def V₂ : Vecterval 2 := #v[dy[[3/2, 2]], dy[[-5/2, 2]]]
 def S : System 2 2 := poly[x1^3, x2^3, -3/2 * x1 * x2;
   4 * x1^2 * x2, 9/4 * x1 * x2^2, -1/2 * x1, -5/2 * x2, 1]
 
+example : V₀.HasRoot S := by krawcheck
+example : V₁.HasNoRoot S := by krawcheck
+example : V₂.HasUniqueRoot S := by krawcheck
+
+
 /-- info: ([#v[dy[[1/16, 1/8]], dy[[3/8, 7/16]]], #v[dy[[3/8, 7/16]], dy[[11/16, 3/4]]]], []) -/
 #guard_msgs in
 #eval Vecterval.IsolateRoots 10 S (Y_default S) V₀ 9
@@ -85,7 +90,7 @@ example : V₀.HasRoot S := by
   native_decide
   -- decide +kernel
 
-example : V₀.HasRoot S := by krawcheck
+
 
 /-- info: ([#v[dy[[25/16, 13/8]], dy[[-133/64, -257/128]]]], []) -/
 #guard_msgs in
@@ -102,20 +107,17 @@ example : V₂.HasUniqueRoot S := by
   <;> native_decide
   -- <;> decide +kernel
 
-example : V₂.HasUniqueRoot S := by krawcheck
-
 /-- info: ([], []) -/
 #guard_msgs in
-#eval Vecterval.IsolateRoots 1 S (Y_default S) V₁ 6
+#eval Vecterval.IsolateRoots 5 S (Y_default S) V₁ 6
 
-example : Vecterval.IsolateRoots 1 S (Y_default S) V₁ 6 = ([], []) := by native_decide
+example : Vecterval.IsolateRoots 5 S (Y_default S) V₁ 6 = ([], []) := by native_decide
 
 example : V₁.HasNoRoot S := by
-  apply krawcheck_has_no_root 1 6
+  apply krawcheck_has_no_root 5 6
   native_decide
   -- decide +kernel
 
-example : V₁.HasNoRoot S := by krawcheck
 
 -- Degenerate System
 def U : Vecterval 2 := #v[⟨0,1, by grind⟩, ⟨0,1,by grind⟩]

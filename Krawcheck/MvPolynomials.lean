@@ -32,8 +32,6 @@ section Structural
 open DyadicInterval Dyadic Vector MvPolynomial
 variable {m n : ℕ}
 
-#check MvPolynomial.support_sum_monomial_coeff --Try not to use this!
-
 -- Given a coefficeient a and multi-index; constructs a ⬝ x^i
 noncomputable def toMvMono (q : ℚ × Vector ℕ n) : MvPolynomial (Fin n) ℚ :=
   -- Finset.univ = {0, 1,..., k-1}
@@ -189,196 +187,6 @@ lemma to_mv_real_poly_trivial (p : MvRatPol n) : p = [] → toMvRealPoly p = 0 :
 
 end Structural
 
--- section Algebra
--- open Vector MvPolynomial
--- variable {m n : ℕ}
-
--- def lt (p q : ℚ × Vector ℕ n) := p.2 < q.2 ∨ (p.2 = q.2 ∧ p.1 < q.1)
--- instance : LT (ℚ × Vector ℕ n) := ⟨lt⟩
--- instance (p q : ℚ × Vector ℕ n) : Decidable (lt p q) :=
---   by unfold lt; infer_instance
-
--- def le (p q : ℚ × Vector ℕ n) := lt p q ∨ p = q
--- instance : LE (ℚ × Vector ℕ n) := ⟨le⟩
--- instance (p q : ℚ × Vector ℕ n) : Decidable (le p q) := by
---   unfold le; infer_instance
--- instance : DecidableLE (ℚ × Vector ℕ n) := fun p q => inferInstanceAs (Decidable (le p q))
-
--- instance : LinearOrder (ℚ × Vector ℕ n) where
---   lt := lt
---   le := le
---   le_refl := by grind only [le, lt]
---   le_trans := by grind only [le, lt]
---   lt_iff_le_not_ge := by grind only [le, lt]
---   le_antisymm := by grind only [le, lt]
---   le_total := by grind only [le, lt]
---   toDecidableLE := fun p q => inferInstanceAs (Decidable (le p q))
---   min := fun p q ↦ if p ≤ q then p else q
---   max := fun p q ↦ if p ≤ q then q else p
-
--- def groupTerms (p : MvRatPol n) : MvRatPol n :=
---   match p with
---   | [] => []
---   | q :: [] =>
---     if q.1 = 0 then [] else [q]
---   | q1 :: q2 :: qs =>
---     if q1.2 = q2.2 then groupTerms ((q1.1 + q2.1, q1.2) :: qs)
---     else if q1.1 = 0 then groupTerms (q2 :: qs)
---     else q1 :: groupTerms (q2 :: qs)
--- termination_by p.length
-
--- theorem groupTerms_perm_sorted {l1 l2 : MvRatPol n} (h_perm : l1.Perm l2) (h1_sort : l1.Pairwise (· ≤ ·))
---   (h2_sort : l2.Pairwise (· ≤ ·)) : groupTerms l1 = groupTerms l2 := by
---   congr; grind only [List.Perm.eq_of_pairwise]
-
--- def canonical (p : MvRatPol n) : MvRatPol n :=
---   groupTerms (p.insertionSort (· ≤ ·))
-
--- lemma canonical_perm (p q: MvRatPol n) (h: q.Perm p) : q.canonical = p.canonical := by
---   have h_sort_q : (q.insertionSort (· ≤ ·)).Perm q := List.perm_insertionSort _ _
---   have h_sort_p : (p.insertionSort (· ≤ ·)).Perm p := List.perm_insertionSort _ _
---   have h_combined := h_sort_q.trans (h.trans h_sort_p.symm)
---   apply groupTerms_perm_sorted h_combined
---   · apply List.pairwise_insertionSort
---   · apply List.pairwise_insertionSort
-
--- lemma toMvPoly_perm (p q: MvRatPol n) (h: q.Perm p) : toMvPoly q = toMvPoly p := by
---   simp only [toMvPoly]
---   have h_map : (q.map toMvMono).Perm (p.map toMvMono) := h.map toMvMono
---   exact List.Perm.sum_eq h_map
-
--- lemma toMvPoly_groupTerms (p : MvRatPol n) : (groupTerms p).toMvPoly = p.toMvPoly := by
---   unfold groupTerms
---   split
---   · simp only [to_mv_poly_trivial]
---   · split_ifs with h
---     · simp only [to_mv_poly_mono, toMvMono, h, monomial_zero, to_mv_poly_trivial]
---     · rfl
---   · split_ifs with h
---     · rw [toMvPoly_groupTerms]
---       simp only [to_mv_poly_cons, ← _root_.add_assoc, add_left_inj]
---       simp only [toMvMono, map_add, h]
---     · rename_i _ _ _ _ h'
---       rw [toMvPoly_groupTerms]
---       simp only [to_mv_poly_cons, ← _root_.add_assoc, add_left_inj]
---       simp only [toMvMono, h', monomial_zero, _root_.zero_add]
---     · simp only [to_mv_poly_cons, add_right_inj]
---       rw [toMvPoly_groupTerms]
---       simp only [to_mv_poly_cons]
--- termination_by p.length
-
--- theorem toMvPoly_canonical (p : MvRatPol n) : toMvPoly (p.canonical) = toMvPoly p := by
---   simp only [canonical, toMvPoly_groupTerms]
---   apply toMvPoly_perm
---   simp only [List.perm_insertionSort]
-
--- abbrev add (p q : MvRatPol n) := canonical (p ++ q)
--- instance : Add (MvRatPol n) := ⟨add⟩
-
--- lemma add_eq (p q : MvRatPol n) : p + q = canonical (p ++ q) := rfl
-
--- theorem toMvPoly_add (p q : MvRatPol n) :  toMvPoly (p + q) = toMvPoly p + toMvPoly q := by
---   rw [add_eq, toMvPoly_canonical]
---   simp only [toMvPoly, ← List.sum_append, ← List.map_append]
-
--- theorem add_comm (p q : MvRatPol n) : p + q = q + p := by
---   simp only [add_eq]
---   grind only [canonical_perm, List.perm_append_comm]
-
--- theorem add_assoc (p q s: MvRatPol n) : p + q + s = p + (q + s) := by
---   simp only [add_eq]
---   sorry
-
--- theorem add_zero (p : MvRatPol n) : p + 0 = p := by
---   rw [add_comm, add_eq]
---   sorry
-
--- -- theorem cons_add (q : ℚ × Vector ℕ n)(qs : MvRatPol n) : q :: qs = [q] + qs := by sorry
-
--- theorem toMvRealPoly_add (p q : MvRatPol n) : toMvRealPoly (p + q) = toMvRealPoly p + toMvRealPoly q := by
---   simp only [toMvRealPoly, toMvPoly_add, map_add]
-
--- def smul (r : ℚ) (p : MvRatPol n) : MvRatPol n := p.map (fun (q, v) ↦ (q * r, v))
--- instance : SMul ℚ (MvRatPol n) := ⟨smul⟩
-
--- theorem canonical_smul (r : ℚ) (p q : MvRatPol n) : (r • p).canonical = r • p.canonical := by
---   sorry
-
--- theorem smul_zero (p : MvRatPol n) : (0 : ℚ) • p = 0 := by
---   sorry
-
--- theorem smul_one (p : MvRatPol n) : (1 : ℚ) • p = p := by
---   sorry
-
--- theorem add_smul (q r : ℚ) (p : MvRatPol n) : (q + r) • p = q • p + r • p := by
---   sorry
-
--- theorem smul_add (r : ℚ) (p q : MvRatPol n) : r • (p + q) = r • p + r • q := by
---   sorry
---   -- change (p ++ q).map (fun (q, v) ↦ (q * r, v)) = p.map (fun (q, v) ↦ (q * r, v)) ++ q.map (fun (q, v) ↦ (q * r, v))
---   -- simp only [List.map_append]
-
--- theorem toMvPoly_smul (r : ℚ) (p : MvRatPol n) : toMvPoly (r • p) = r • toMvPoly p := by
---   sorry
---   -- induction p with
---   -- | nil =>
---   --   change toMvPoly ([].map (fun (q, v) ↦ (q * r, v))) =  r • toMvPoly []
---   --   simp [to_mv_poly_trivial]
---   -- | cons q qs ih =>
---   --   rw [cons_add, smul_add]
---   --   simp only [toMvPoly_add, ih, _root_.smul_add, add_left_inj]
---   --   change toMvPoly ([q].map (fun (q, v) ↦ (q * r, v))) =  r • toMvPoly [q]
---   --   simp only [List.map_singleton, to_mv_poly_mono, toMvMono, toMvMono]
---   --   simp only [smul_monomial, _root_.mul_comm]; congr
-
--- theorem toMvRealPoly_smul (r : ℚ) (p : MvRatPol n) : toMvRealPoly (r • p) = r • toMvRealPoly p := by
---   sorry
---   -- induction p with
---   -- | nil =>
---   --   change toMvRealPoly ([].map (fun (q, v) ↦ (q * r, v))) =  r • toMvRealPoly []
---   --   simp [to_mv_real_poly_trivial]
---   -- | cons q qs ih =>
---   --   rw [cons_add, smul_add]
---   --   simp only [toMvRealPoly_add, ih, _root_.smul_add, add_left_inj]
---   --   change toMvRealPoly ([q].map (fun (q, v) ↦ (q * r, v))) =  r • toMvRealPoly [q]
---   --   simp only [List.map_singleton, to_mv_real_poly_mono, toMvRealMono, toMvMono]
---   --   simp only [map_monomial, eq_ratCast, Rat.cast_mul, smul_monomial, _root_.mul_comm]; congr
-
--- def neg (p : MvRatPol n) : MvRatPol n := p.map (fun (q, n) ↦ (-q, n))
--- instance : Neg (MvRatPol n) := ⟨neg⟩
-
--- theorem toMvPoly_neg (p : MvRatPol n) : toMvPoly (-p) = - (toMvPoly p) := by
---   simp only [MvPolynomial.ext_iff, ← coeff_to_mv_poly, coeff_neg]; intro m
---   conv => lhs; simp only [Neg.neg, neg]
---   induction p with
---   | nil =>
---     simp only [List.map_nil, coeff_trivial, _root_.neg_zero]
---   | cons q qs ih =>
---     rw [coeff_cons]
---     simp only [List.map_cons, _root_.neg_add_rev]
---     rw [coeff_cons, _root_.add_comm]
---     simp only [ih, coeff_mono, add_right_inj]
---     split_ifs with h <;> rfl
-
--- def sub (p q : MvRatPol n) := p + (-q)
--- instance : Sub (MvRatPol n) := ⟨sub⟩
-
--- theorem add_neg (p q : MvRatPol n) : p - q = p + (-q) := by rfl
-
--- theorem toMvPoly_sub (p q : MvRatPol n) :  toMvPoly (p - q) = toMvPoly p - toMvPoly q := by
---   grind only [add_neg, toMvPoly_add, toMvPoly_neg]
-
--- instance : AddCommMonoid (MvRatPol n) where
---   add_comm := add_comm
---   add_assoc := add_assoc
---   add_zero := add_zero
---   zero_add := by grind only [add_zero, add_comm]
---   nsmul (z : ℕ) (p : MvRatPol n) := (z : ℚ) • p
---   nsmul_zero := by grind only [smul_zero]
---   nsmul_succ := by grind only [add_smul, smul_one]
-
--- end Algebra
-
 section Evaluation
 open DyadicInterval Dyadic Vector MvPolynomial
 variable {m n : ℕ}
@@ -459,8 +267,6 @@ lemma eval_push_pop_back (prec : ℤ) (q : ℚ × Vector ℕ (n + 1)) (X : Vecte
   rw [_root_.mul_assoc]; congr
   rw [Fin.prod_univ_castSucc]; congr
   simp only [get_pop]
-
--- TODO : Successive Mean Value Form
 
 theorem vecterval_eval_monomial_sound (prec : ℤ) (q : ℚ × Vector ℕ n) (X : Vecterval n) :
   ∀ x ∈ X, (toMvRealMono q).eval x.get ∈ vectervalEvalMonomial prec q X := by
@@ -568,11 +374,6 @@ noncomputable def fderiv (p : MvRatPol n) (f : Fin n → ℝ) : StrongDual ℝ (
   let grad_eval (i : Fin n) : ℝ := (toMvRealPoly (pderiv i p)).eval f
   LinearMap.toContinuousLinearMap (∑ i : Fin n, grad_eval i • LinearMap.proj i)
 
--- theorem fderiv_canonical (p : MvRatPol n) (f : Fin n → ℝ) :
---   fderiv (p.canonical) f = fderiv p f := by
---   simp only [fderiv]
---   sorry
-
 theorem fderiv_trivial (x : Fin n → ℝ) : fderiv [] x = 0 := by
   simp only [fderiv, pderiv, List.map_nil, to_mv_real_poly_trivial,
     _root_.zero_smul, Finset.sum_const_zero, map_zero]
@@ -607,35 +408,6 @@ theorem fderiv_X (j : Fin n) (f : Fin n → ℝ) :
   simp only [toMvRealPoly, apply_ite, to_mv_poly_one, to_mv_poly_zero, map_one, map_zero, ite_smul,
     one_smul, _root_.zero_smul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   rfl
-
--- theorem fderiv_add (p q: MvRatPol n) (f : Fin n → ℝ) :
---   fderiv (p + q) f = fderiv p f + fderiv q f :=
---   sorry
-
--- theorem fderiv_sum (fp : Fin m → MvRatPol n) (f : Fin n → ℝ) :
---   fderiv ((Vector.ofFn (fp)).sum) f = ∑ j, fderiv (fp j) f := by
---   induction m with
---   | zero =>
---     have : ofFn fp = #v[] := by grind only
---     simp only [this, sum_mk, List.sum_toArray, List.sum_nil,
---       Finset.univ_eq_empty, Finset.sum_empty, fderiv_zero]
---   | succ k ih =>
---     simp only [ofFn_succ, push_sum, fderiv_add, ih]
---     simp only [Fin.sum_univ_castSucc, add_right_inj]; congr
-
--- theorem fderiv_sum (fp : Fin m → MvRatPol n) (f : Fin n → ℝ) :
---   fderiv (∑ j, fp j) f = ∑ j, fderiv (fp j) f := by
---   induction m with
---   | zero => sorry
---   | succ k ih => sorry
-
--- theorem fderiv_smul (r : ℚ) (p : MvRatPol n) (f : Fin n → ℝ) :
---   fderiv (r • p) f = r • fderiv p f := by
---   sorry
-
--- theorem fderiv_neg (p q: MvRatPol n) (f : Fin n → ℝ) :
---   fderiv (p - q) f = fderiv p f - fderiv q f :=
---   sorry
 
 theorem hasDerivWithinAt_mono (q : ℚ × Vector ℕ n) (X : Vecterval n) : ∀ x ∈ X.toSet,
   HasFDerivWithinAt (fun x ↦ (eval x) (toMvRealMono q)) (fderiv [q] x) X.toSet x := by
@@ -677,6 +449,119 @@ theorem mvt_real_poly (p : MvRatPol n) (X : Vecterval n) : ∀ x ∈ X, ∃ ξ �
   · grind only
 
 end Derivative
+
+section SuccMVF
+open DyadicInterval Dyadic Vector MvPolynomial
+variable {m n : ℕ}
+
+/-- Successive mean-value form evaluation of `p` over the interval box `X`:
+`f(Xm) + Σᵢ (∂f/∂xᵢ)(X.flatten i) · (Xᵢ − Xmᵢ)`, where each partial derivative `pderiv i p`
+is evaluated naively (via `vectervalEvalWithPrec`) over the mixed box `X.flatten i` — the box
+with coordinates `< i` collapsed to their midpoints and coordinate `i` (and beyond) left as
+intervals. Compared to the naive `vectervalEvalWithPrec`, this curbs the dependency-problem
+overestimation by replacing each variable's first occurrence with a degenerate midpoint. -/
+def evalMvfWithPrec (prec : ℤ) (p : MvRatPol n) (X : Vecterval n) : DyadicInterval :=
+  let const := p.evalWithPrec prec X.midpoint_rat
+  let grad : Vecterval n :=
+    Vecterval.ofFn (fun i => (pderiv i p).vectervalEvalWithPrec prec (Vecterval.flatten X i))
+  let widths : Vecterval n := X - Vecterval.ofVecDyadic X.midpoint
+  const + grad.dotProduct widths
+
+/-- Telescoping mean-value identity underlying `evalMvfWithPrec`: for any point `x ∈ X` there
+are witnesses `w i` in the mixed boxes `X.flatten i` realising the successive mean-value
+expansion of `p` exactly. -/
+theorem eval_mvf_eq (p : MvRatPol n) (X : Vecterval n) : ∀ x ∈ X, ∃ w : Fin n → (Fin n → ℝ),
+  (∀ i : Fin n, w i ∈ (Vecterval.flatten X i).toSet) ∧
+  (toMvRealPoly p).eval x.get = (toMvRealPoly p).eval X.midpoint_real.get
+    + ∑ i, (toMvRealPoly (pderiv i p)).eval (w i) * (x.get i - X.midpoint_real.get i) := by
+  intro x hx
+  set m : Fin n → ℝ := X.midpoint_real.get with hm
+  -- hybrid points: coordinates below `k` sit at the midpoint, the rest at `x`
+  set z : ℕ → (Fin n → ℝ) := fun k j => if (j : ℕ) < k then m j else x.get j with hz
+  -- every hybrid coordinate stays inside `X`
+  have hzX : ∀ k (j : Fin n), z k j ∈ X.get j := by
+    intro k j; simp only [hz]; split_ifs
+    · exact X.midpoint_mem j
+    · exact hx j
+  -- a hybrid point with cut `≥ i` lies in the mixed box `flatten X i`
+  have hmem : ∀ k (i : Fin n), (i : ℕ) ≤ k → z k ∈ (Vecterval.flatten X i).toSet := by
+    intro k i hik
+    rw [Vecterval.mem_toSet_iff, Vecterval.ofFn_mem_iff]
+    intro j; rw [Vecterval.get_flatten]
+    split_ifs with hji
+    · have hji' : (j : ℕ) < (i : ℕ) := hji
+      have hzkj : z k j = m j := by simp only [hz]; rw [if_pos (lt_of_lt_of_le hji' hik)]
+      rw [hzkj, hm]
+      simp only [Vecterval.midpoint_real, Vecterval.midpoint_rat, Vecterval.midpoint, Vector.get_map]
+      exact to_rat_mem_of_dyadic _
+    · exact hzX k j
+  -- one-dimensional mean value step across coordinate `i`
+  have step : ∀ i : Fin n, ∃ ξ, ξ ∈ (Vecterval.flatten X i).toSet ∧
+      (toMvRealPoly p).eval (z i) - (toMvRealPoly p).eval (z ((i : ℕ) + 1))
+        = (toMvRealPoly (pderiv i p)).eval ξ * (x.get i - m i) := by
+    intro i
+    have hconv := (Vecterval.flatten X i).convex
+    have ha : z ((i : ℕ) + 1) ∈ (Vecterval.flatten X i).toSet := hmem _ i (Nat.le_succ _)
+    have hb : z (i : ℕ) ∈ (Vecterval.flatten X i).toSet := hmem _ i (le_refl _)
+    obtain ⟨ξ, hξ, hξ'⟩ :=
+      domain_mvt (hasFDerivWithinAt_eval p (Vecterval.flatten X i)) hconv ha hb
+    refine ⟨ξ, Set.mem_of_subset_of_mem (Convex.segment_subset hconv ha hb) hξ, ?_⟩
+    rw [hξ']
+    have hsingle : z (i : ℕ) - z ((i : ℕ) + 1) = Pi.single i (x.get i - m i) := by
+      funext j; rw [Pi.sub_apply]; simp only [hz]
+      rcases lt_trichotomy (j : ℕ) (i : ℕ) with h | h | h
+      · rw [if_pos (by omega), if_pos (by omega), sub_self,
+          Pi.single_eq_of_ne (Fin.ne_of_val_ne (by omega))]
+      · have hj : j = i := Fin.ext h
+        subst hj
+        rw [if_neg (by omega), if_pos (by omega), Pi.single_eq_same]
+      · rw [if_neg (by omega), if_neg (by omega), sub_self,
+          Pi.single_eq_of_ne (Fin.ne_of_val_ne (by omega))]
+    rw [hsingle]
+    simp only [MvRatPol.fderiv, map_sum, map_smul, ContinuousLinearMap.coe_sum',
+      ContinuousLinearMap.coe_smul', LinearMap.coe_toContinuousLinearMap', LinearMap.coe_proj,
+      Finset.sum_apply, Pi.smul_apply, Function.eval, Pi.single_apply, smul_eq_mul, mul_ite, MulZeroClass.mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
+  choose w hw hweq using step
+  refine ⟨w, hw, ?_⟩
+  have hz0 : z 0 = x.get := by funext j; simp only [hz]; rw [if_neg (Nat.not_lt_zero _)]
+  have hzn : z n = m := by funext j; simp only [hz]; rw [if_pos j.2]
+  have key : ∑ i : Fin n, (toMvRealPoly (pderiv i p)).eval (w i) * (x.get i - m i)
+      = (toMvRealPoly p).eval x.get - (toMvRealPoly p).eval m := by
+    have e1 : ∑ i : Fin n, (toMvRealPoly (pderiv i p)).eval (w i) * (x.get i - m i)
+        = ∑ i : Fin n, ((toMvRealPoly p).eval (z i) - (toMvRealPoly p).eval (z ((i : ℕ) + 1))) :=
+      Finset.sum_congr rfl (fun i _ => (hweq i).symm)
+    rw [e1, Fin.sum_univ_eq_sum_range
+        (fun k => (toMvRealPoly p).eval (z k) - (toMvRealPoly p).eval (z (k + 1))) n,
+      Finset.sum_range_sub' (fun k => (toMvRealPoly p).eval (z k)) n, hz0, hzn]
+  rw [key]; ring
+
+/-- Soundness of the successive mean-value form: the true value of `p` at any point of the box `X` is contained in `evalMvfWithPrec prec p X`. -/
+theorem eval_mvf_sound (prec : ℤ) (p : MvRatPol n) (X : Vecterval n) :
+  ∀ x ∈ X, (toMvRealPoly p).eval x.get ∈ evalMvfWithPrec prec p X := by
+  intro x hx
+  obtain ⟨w, h₁, h₂⟩ := eval_mvf_eq p X x hx
+  simp only [h₂, evalMvfWithPrec]
+  apply add_sound
+  · have h : X.midpoint_real.get = fun i ↦ ((X.midpoint_rat.get i : ℝ)) := by
+      ext i; simp only [Vecterval.midpoint_real, Vector.get_map]
+    rw [h]; exact eval_sound prec p X.midpoint_rat
+  · simp only [Vecterval.dotProduct, dotProduct]
+    apply Vecterval.sum_sound
+    simp only [Finset.mem_univ, forall_const]
+    simp only [Vecterval.get_ofFn, Vecterval.get_sub, Pi.sub_apply]
+    intro i; specialize h₁ i
+    apply mul_sound
+    · have hm : Vector.ofFn (w i) ∈ Vecterval.flatten X i := by
+        rw [← Vecterval.mem_toSet_iff]; exact h₁
+      have := vecterval_eval_sound prec (pderiv i p) _ _ hm
+      rw [← Vector.get_ofFn' (w i)] at this; exact this
+    · apply sub_sound
+      · exact hx i
+      · simp only [Vecterval.ofVecDyadic, Vecterval.midpoint, Vecterval.midpoint_real,
+          Vecterval.midpoint_rat, Vector.get_map]
+        apply to_rat_mem_of_dyadic
+
+end SuccMVF
 end MvRatPol
 
 /-- ℝ^k → ℝ^k -/
@@ -722,11 +607,13 @@ theorem eval_sound (prec : ℤ) (S : System m n) (x : Vector ℚ n) :
   grind only [evalWithPrec, eval, Vecterval.mem_iff, get_ofFn, MvRatPol.eval_sound]
 
 def vectervalEvalWithPrec (prec : ℤ) (S : System m n) (X : Vecterval n) : Vecterval m :=
-  Vector.ofFn (fun i ↦ (S.get i).vectervalEvalWithPrec prec X)
+  -- Vector.ofFn (fun i ↦ (S.get i).vectervalEvalWithPrec prec X)
+  Vector.ofFn (fun i ↦ (S.get i).evalMvfWithPrec prec X)
 
 theorem vecterval_eval_sound (prec : ℤ) (S : System m n) (X : Vecterval n) :
   ∀ x ∈ X, eval S x ∈ vectervalEvalWithPrec prec S X := by
-  grind only [eval, vectervalEvalWithPrec, Vecterval.mem_iff, get_ofFn, vecterval_eval_sound]
+  -- grind only [eval, vectervalEvalWithPrec, Vecterval.mem_iff, get_ofFn, vecterval_eval_sound]
+  grind only [eval, vectervalEvalWithPrec, Vecterval.mem_iff, get_ofFn, eval_mvf_sound]
 
 theorem mvt_real_sys (S : System m n) (X : Vecterval n) :
   ∀ x ∈ X, ∀ i, ∃ ξ ∈ X, (S.eval' x.get) i =
@@ -740,7 +627,8 @@ noncomputable def exactJacobian (S : System m n) (f : Fin n → ℝ) : Matrix (F
 
 def jacobianEvalWithPrec (prec : ℤ) (S : System m n) (X : Vecterval n): Matrival m n :=
   let F : Fin m → Fin n → MvRatPol n := fun i j ↦ pderiv j (S.get i)
-  Matrival.ofFn (fun i j ↦ (F i j).vectervalEvalWithPrec prec X)
+  -- Matrival.ofFn (fun i j ↦ (F i j).vectervalEvalWithPrec prec X)
+  Matrival.ofFn (fun i j ↦ (F i j).evalMvfWithPrec prec X)
 
 theorem jacobian_sound (prec : ℤ) (S : System m n) (X Y : Vecterval n) (x y : Vector ℝ n)
   (hx : x ∈ X) (hy : y ∈ Y) : ∀ i, (S.get i).fderiv x.get y.get ∈ ((jacobianEvalWithPrec prec S X) * Y).get i := by
@@ -755,7 +643,8 @@ theorem jacobian_sound (prec : ℤ) (S : System m n) (X Y : Vecterval n) (x y : 
   simp only [Finset.mem_univ, forall_const]; intro j
   apply mul_sound
   · simp only [Matrival.get_ofFn]
-    apply MvRatPol.vecterval_eval_sound
+    -- apply MvRatPol.vecterval_eval_sound
+    apply MvRatPol.eval_mvf_sound
     exact hx
   · exact (hy j)
 
@@ -768,7 +657,8 @@ theorem exact_jacobian_sound (prec : ℤ) (S : System m n) (X : Vecterval n) :
     Finset.sum_apply, Pi.smul_apply, Function.eval, Pi.single_apply, smul_eq_mul, mul_ite,
     _root_.mul_one, MulZeroClass.mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   simp only [Vecterval.mem_toSet_iff] at hx -- Vector.ofFn x ∈ X
-  have h₁ := MvRatPol.vecterval_eval_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ hx
+  -- have h₁ := MvRatPol.vecterval_eval_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ hx
+  have h₁ := MvRatPol.eval_mvf_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ hx
   have : (ofFn x).get = x := by ext i; simp only [Vector.get_ofFn]
   grind only
 
@@ -784,9 +674,11 @@ theorem mixedJacobian_sound (prec : ℤ) (S : System m n) (X : Vecterval n) (ξ 
     Function.eval, smul_eq_mul]
   simp only [Pi.single_apply, mul_ite, _root_.mul_one, MulZeroClass.mul_zero, Finset.sum_ite_eq',
     Finset.mem_univ, ↓reduceIte]
-  have := MvRatPol.vecterval_eval_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ (h i)
+  -- have := MvRatPol.vecterval_eval_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ (h i)
+  have := MvRatPol.eval_mvf_sound prec (MvRatPol.pderiv j (Vector.get S i)) X _ (h i)
   rw [Vector.get_ofFn' (ξ i)]
-  exact MvRatPol.vecterval_eval_sound prec _ _ _ (h i)
+  -- exact MvRatPol.vecterval_eval_sound prec _ _ _ (h i)
+  exact MvRatPol.eval_mvf_sound prec _ _ _ (h i)
 
 lemma mixedJacobian_mulVec_eq (S : System m n) (ξ : Fin m → Fin n → ℝ)
   (v : Fin n → ℝ) (j : Fin m) :

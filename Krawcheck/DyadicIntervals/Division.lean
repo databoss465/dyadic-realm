@@ -208,8 +208,6 @@ lemma pos_div_bounds {x y : ℝ} (hx : x ∈ I)(h₀ : 0 < y) :
   I.left.toRat / y ≤ x / y ∧ x / y ≤ I.right.toRat / y :=
       ⟨div_le_div_of_nonneg_right hx.left (le_of_lt h₀), div_le_div_of_nonneg_right hx.right (le_of_lt h₀)⟩
 
-#check div_le_div_of_nonneg_left
-#check div_le_div_of_nonneg_right
 
 /-- `∀ y ∈ J, ∀ x ≤ 0, x/J.left ≤ x/y ≤ x/J.right` -/
 lemma nonpos_div_bounds {x y : ℝ} (hy : y ∈ J) (h₀ : x ≤ 0) :
